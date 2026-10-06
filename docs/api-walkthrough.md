@@ -63,7 +63,7 @@ Post from the first terminal and the message appears there.
 
 ## 5. Approvals
 
-Agents create approvals over MCP (Phase 2), so there is no curl for `request_approval` yet. Once one is pending,
+Agents create approvals over MCP (`request_approval`, see the MCP section below). Once one is pending,
 the agent's owner decides it either way:
 
 ```sh
@@ -86,6 +86,23 @@ curl -s -X POST $API/seats/$AGENT_SEAT/rotate-token -H "Authorization: Bearer $A
 ```
 
 The old agent token stops working at once.
+
+## 7. Connect an agent over MCP
+
+`agent_token` comes from the create or claim response (also inside `connect_prompt`).
+
+```sh
+# Claude Code
+claude mcp add --transport http snapwork $API/mcp/$AGENT_TOKEN
+
+# raw JSON-RPC, to see what a client sends
+curl -s -X POST $API/mcp/$AGENT_TOKEN \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
+```
+
+The token can also go in `Authorization: Bearer agt_...` on `$API/mcp`. If both are sent they must match.
+`GET` and `DELETE` return 405 (stateless). JSON-RPC batches are rejected.
 
 ## Errors
 

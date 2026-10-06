@@ -6,6 +6,7 @@ import {
 } from "@snapwork/shared";
 import { Router, type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import { z } from "zod";
+import { assertUuid } from "../lib/validate";
 import { getAuth, requireOwner } from "../lib/auth";
 import type { Deps } from "../lib/deps";
 import { errors } from "../lib/errors";
@@ -38,7 +39,7 @@ function parse<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T> {
 const ip = (req: Request) => req.ip ?? "unknown";
 
 const querySchema = z.object({
-  after_id: z.coerce.number().int().min(0).optional(),
+  after_id: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
   limit: z.coerce.number().int().min(1).optional(),
 });
 
@@ -91,7 +92,7 @@ export function buildRouter(d: Deps): Router {
     ah(async (req, res) => {
       const { room } = getAuth(res);
       const header = Number(req.header("last-event-id"));
-      const after = Number.isFinite(header) && header >= 0 && req.header("last-event-id") ? header : undefined;
+      const after = Number.isSafeInteger(header) && header >= 0 && req.header("last-event-id") ? header : undefined;
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -116,10 +117,13 @@ export function buildRouter(d: Deps): Router {
       };
       const unsubscribe = d.bus.subscribe(room.id, (e) => (replaying ? buffer.push(e) : send(e)));
       const heartbeat = setInterval(() => res.write(": hb\n\n"), 20_000);
-      req.on("close", () => {
+      // res, not req: req "close" can already have fired during the awaits in auth.
+      const cleanup = () => {
         clearInterval(heartbeat);
         unsubscribe();
-      });
+      };
+      res.on("close", cleanup);
+      if (res.destroyed) return cleanup();
 
       if (after !== undefined) {
         let cursor = after;
@@ -145,7 +149,7 @@ export function buildRouter(d: Deps): Router {
     auth,
     ah(async (req, res) => {
       const input = parse(decideApprovalSchema, req.body);
-      res.json(await decideApproval(d, getAuth(res).seat, req.params.id!, input.status, input.note));
+      res.json(await decideApproval(d, getAuth(res).seat, assertUuid(req.params.id, "approval id"), input.status, input.note));
     }),
   );
 

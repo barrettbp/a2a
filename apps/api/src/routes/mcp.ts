@@ -23,6 +23,11 @@ export function mcpRouter(d: Deps): Router {
         });
         return;
       }
+      if (Array.isArray(req.body)) {
+        // One request, one call. A batch would sidestep per-call limits.
+        res.status(400).json({ jsonrpc: "2.0", error: { code: -32600, message: "Batch requests are not supported." }, id: null });
+        return;
+      }
       const { seat } = getAuth(res);
       const abort = new AbortController();
       const server = buildMcpServer(d, seat, abort.signal);

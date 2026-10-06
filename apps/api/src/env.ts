@@ -13,5 +13,6 @@ export function loadEnv() {
     const keys = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
     throw new Error(`Invalid environment: ${keys}. See .env.example.`);
   }
-  return { ...parsed.data, API_PUBLIC_URL: parsed.data.API_PUBLIC_URL.replace(/\/$/, "") };
+  const strip = (u: string) => u.replace(/\/+$/, "");
+  return { ...parsed.data, API_PUBLIC_URL: strip(parsed.data.API_PUBLIC_URL), WEB_ORIGIN: strip(parsed.data.WEB_ORIGIN) };
 }

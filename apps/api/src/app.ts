@@ -32,6 +32,7 @@ export function createApp(opts: AppOptions) {
   };
 
   const app = express();
+  app.disable("x-powered-by");
   app.set("trust proxy", 1);
   app.use(cors({ origin: opts.webOrigin }));
   app.use(express.json({ limit: "64kb" }));
@@ -63,10 +64,19 @@ export function createApp(opts: AppOptions) {
     if (err instanceof AppError) {
       return res.status(err.status).json({ error: { code: err.code, message: err.message } });
     }
-    if (err instanceof ZodError || (err as { type?: string })?.type === "entity.parse.failed") {
+    const e = err as { type?: string; status?: number; code?: string; cause?: { code?: string } };
+    if (err instanceof ZodError || e?.type === "entity.parse.failed") {
       return res.status(400).json({ error: { code: "VALIDATION", message: "Invalid request body." } });
     }
-    opts.log?.error({ err: err instanceof Error ? err.message : "unknown" }, "unhandled error");
+    if (e?.type === "entity.too.large") {
+      return res.status(413).json({ error: { code: "VALIDATION", message: "Request is too large." } });
+    }
+    // Never log err.message: a Drizzle query error carries the SQL and every bound parameter,
+    // which can be a message body or a token hash. Log the error class and the Postgres code only.
+    opts.log?.error(
+      { errName: (err as Error)?.constructor?.name ?? "unknown", pgCode: e?.cause?.code ?? e?.code },
+      "unhandled error",
+    );
     res.status(500).json({ error: { code: "INTERNAL", message: "Something went wrong." } });
   });
 

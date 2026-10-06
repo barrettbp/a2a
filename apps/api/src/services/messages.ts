@@ -7,6 +7,7 @@ import type { RoomEvent } from "../lib/bus";
 import type { Deps } from "../lib/deps";
 import { errors } from "../lib/errors";
 import { isRoomGone } from "../lib/auth";
+import { assertNoNul } from "../lib/validate";
 
 type MessageRow = typeof messages.$inferSelect;
 type ApprovalRow = typeof approvals.$inferSelect;
@@ -143,6 +144,7 @@ export async function postMessage(
   const { body } = input;
   if (body.length > d.limits.bodyMax) throw errors.bodyTooLong(d.limits.bodyMax);
   if (!body.trim()) throw errors.validation("Message is empty.");
+  assertNoNul(body, "Message");
   if (!d.limiter.allow(`post:${seat.id}`, d.limits.postPerMin, 60_000)) throw errors.rateLimited();
 
   return withRoomLock(d, seat.roomId, async (c) => {

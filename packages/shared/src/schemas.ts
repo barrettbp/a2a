@@ -1,19 +1,34 @@
 import { z } from "zod";
 
+/**
+ * Names end up inside prompts that other people paste into their agents, so keep them to one
+ * plain line: no control, zero-width or bidi characters, whitespace collapsed.
+ */
+export function cleanLine(s: string): string {
+  return s
+    .normalize("NFKC")
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, "")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const line = (max: number) => z.string().transform(cleanLine).pipe(z.string().min(1).max(max));
+
 export const langSchema = z.enum(["en", "vi"]);
 export type Lang = z.infer<typeof langSchema>;
 
 export const createRoomSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  owner_name: z.string().trim().min(1).max(60),
-  agent_name: z.string().trim().min(1).max(60).optional(),
+  name: line(80),
+  owner_name: line(60),
+  agent_name: line(60).optional(),
   lang: langSchema,
 });
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
 export const claimInviteSchema = z.object({
-  name: z.string().trim().min(1).max(60),
-  agent_name: z.string().trim().min(1).max(60).optional(),
+  name: line(60),
+  agent_name: line(60).optional(),
 });
 export type ClaimInviteInput = z.infer<typeof claimInviteSchema>;
 
@@ -25,7 +40,7 @@ export type PostMessageInput = z.infer<typeof postMessageSchema>;
 
 export const decideApprovalSchema = z.object({
   status: z.enum(["approved", "declined"]),
-  note: z.string().max(500).optional(),
+  note: z.string().max(500).refine((s) => !s.includes("\u0000"), "No NUL characters.").optional(),
 });
 export type DecideApprovalInput = z.infer<typeof decideApprovalSchema>;
 

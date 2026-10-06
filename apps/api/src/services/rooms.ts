@@ -11,6 +11,7 @@ import { approvals, invites, rooms, seats } from "../db/schema";
 import { isRoomGone, type Room, type Seat } from "../lib/auth";
 import type { Deps } from "../lib/deps";
 import { errors } from "../lib/errors";
+import { assertUuid } from "../lib/validate";
 import { generateRoomId, generateToken, hashToken } from "../lib/tokens";
 import { addMessage, approvalWire, withRoomLock } from "./messages";
 
@@ -175,6 +176,7 @@ export async function getRoomView(db: Db, room: Room, me: Seat) {
 }
 
 export async function rotateAgentToken(d: Deps, caller: Seat, agentSeatId: string) {
+  assertUuid(agentSeatId, "seat id");
   const [agent] = await d.db
     .select()
     .from(seats)
@@ -189,6 +191,8 @@ export async function rotateAgentToken(d: Deps, caller: Seat, agentSeatId: strin
   const [room] = await d.db.select().from(rooms).where(eq(rooms.id, caller.roomId));
   const humans = await d.db.select().from(seats).where(and(eq(seats.roomId, caller.roomId), eq(seats.kind, "human")));
   const otherHuman = humans.find((h) => h.id !== caller.id && h.claimedAt);
+  // A wait that started with the old token must not keep delivering after rotation.
+  d.waiters.kill(agent.id);
   d.bus.emit(caller.roomId, { type: "seat", data: { reason: "rotated", seat_id: agent.id } });
   return {
     agent_token: agentToken,

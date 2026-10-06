@@ -1,9 +1,10 @@
-import { greeting, rulesBlock, systemMessages } from "@snapwork/shared";
+import { cleanLine, greeting, rulesBlock, systemMessages } from "@snapwork/shared";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { approvals, messages, rooms, seats } from "../db/schema";
 import type { Seat } from "../lib/auth";
 import type { Deps } from "../lib/deps";
 import { AppError, errors } from "../lib/errors";
+import { assertCursor, assertNoNul, assertUuid } from "../lib/validate";
 import { addMessage, approvalWire, messageWire, postMessage, readMessages, withRoomLock } from "./messages";
 
 type Wire = ReturnType<typeof messageWire>;
@@ -15,7 +16,9 @@ const ONLINE_MS = 90_000;
 
 /** Wrap text from other participants. Any closing tag inside is neutralised first. */
 export function wrapUntrusted(text: string): string {
-  const safe = text.replace(/<\/\s*untrusted_message\s*>/gi, "[/untrusted_message]");
+  // NFKC folds fullwidth brackets; zero-width characters are dropped so the tag cannot be hidden.
+  const folded = text.normalize("NFKC").replace(/[\u200b-\u200f\u2060\ufeff]/g, "");
+  const safe = folded.replace(/<\s*(\/?)\s*untrusted_message[^>]*>?/gi, "[$1untrusted_message]");
   return `<untrusted_message>${safe}</untrusted_message>`;
 }
 
@@ -85,6 +88,15 @@ export class WaiterRegistry {
     return w;
   }
 
+  /** End any open wait for this seat (token rotation). */
+  kill(seatId: string) {
+    const w = this.map.get(seatId);
+    if (w) {
+      w.superseded = true;
+      w.wake();
+    }
+  }
+
   close(seatId: string, w: Waiter) {
     if (this.map.get(seatId) === w) this.map.delete(seatId);
   }
@@ -116,9 +128,9 @@ export const touch = (d: Deps, seat: Seat) =>
   d.db.update(seats).set({ lastSeenAt: new Date() }).where(eq(seats.id, seat.id));
 
 export async function joinRoom(d: Deps, seat: Seat, input: { agent_name: string; model?: string }) {
-  const requested = input.agent_name.trim();
+  const requested = cleanLine(input.agent_name);
   if (requested.length < 1 || requested.length > 60) throw errors.validation("agent_name must be 1 to 60 characters.");
-  const model = input.model?.trim();
+  const model = input.model ? cleanLine(input.model) : undefined;
   if (model && model.length > 60) throw errors.validation("model must be at most 60 characters.");
 
   return withRoomLock(d, seat.roomId, async (c) => {
@@ -182,7 +194,7 @@ export async function waitForMessages(
   input: { after_id: number; timeout_s?: number },
   signal?: AbortSignal,
 ) {
-  if (!Number.isInteger(input.after_id) || input.after_id < 0) throw errors.validation("after_id must be 0 or more.");
+  assertCursor(input.after_id, "after_id");
   const timeoutMs = Math.min(Math.max(input.timeout_s ?? 25, 1), 50) * 1000;
   const deadline = Date.now() + timeoutMs;
   const w = d.waiters.open(seat.id);
@@ -227,6 +239,7 @@ export async function waitForMessages(
 }
 
 export async function readMessagesTool(d: Deps, seat: Seat, input: { after_id?: number; limit?: number }) {
+  if (input.after_id !== undefined) assertCursor(input.after_id, "after_id");
   const out = await readMessages(d.db, seat.roomId, { afterId: input.after_id, limit: input.limit });
   const { byId } = await seatMap(d, seat.roomId);
   return { messages: out.messages.map((m) => agentView(seat, byId, m)), last_id: out.last_id };
@@ -260,6 +273,9 @@ export async function requestApproval(
   const plan = input.plan?.trim() || null;
   if (task.length < 1 || task.length > 500) throw errors.validation("task must be 1 to 500 characters.");
   if (plan && plan.length > 2000) throw errors.validation("plan must be at most 2000 characters.");
+  assertNoNul(task, "task");
+  assertNoNul(plan, "plan");
+  if (input.requested_by_message_id !== undefined) assertCursor(input.requested_by_message_id, "requested_by_message_id");
   if (!d.limiter.allow(`approval:${seat.id}`, d.limits.approvalPerMin, 60_000)) throw errors.rateLimited();
   if (!seat.ownerSeatId) throw errors.validation("This seat has no owner.");
 
@@ -312,6 +328,7 @@ export async function requestApproval(
 }
 
 export async function checkApproval(d: Deps, seat: Seat, input: { approval_id: string }) {
+  assertUuid(input.approval_id, "approval_id");
   const [ap] = await d.db
     .select()
     .from(approvals)
@@ -323,6 +340,8 @@ export async function checkApproval(d: Deps, seat: Seat, input: { approval_id: s
 export async function reportDone(d: Deps, seat: Seat, input: { approval_id: string; result: string }) {
   if (input.result.length > d.limits.bodyMax) throw errors.bodyTooLong(d.limits.bodyMax);
   if (!input.result.trim()) throw errors.validation("result is empty.");
+  assertNoNul(input.result, "result");
+  assertUuid(input.approval_id, "approval_id");
   if (!d.limiter.allow(`post:${seat.id}`, d.limits.postPerMin, 60_000)) throw errors.rateLimited();
 
   return withRoomLock(d, seat.roomId, async (c) => {
@@ -353,9 +372,12 @@ export async function reportDone(d: Deps, seat: Seat, input: { approval_id: stri
 }
 
 export async function leaveRoom(d: Deps, seat: Seat) {
+  if (!d.limiter.allow(`leave:${seat.id}`, 3, 60_000)) throw errors.rateLimited();
+  // `seat` was loaded before this call's own last-seen update, so null means it already left.
+  const wasOnline = seat.lastSeenAt !== null;
   return withRoomLock(d, seat.roomId, async (c) => {
     await c.tx.update(seats).set({ lastSeenAt: null }).where(eq(seats.id, seat.id));
-    if (c.status !== "readonly") {
+    if (wasOnline && c.status !== "readonly") {
       const [me] = await c.tx.select().from(seats).where(eq(seats.id, seat.id));
       await addMessage(c, { kind: "system", body: systemMessages.left(c.lang, me?.agentName ?? "Agent") });
     }

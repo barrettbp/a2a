@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Seat } from "../lib/auth";
 import type { Deps } from "../lib/deps";
 import { errors } from "../lib/errors";
+import { assertNoNul, assertUuid } from "../lib/validate";
 import { approvals } from "../db/schema";
 import { applyDecision, withRoomLock } from "./messages";
 
@@ -12,6 +13,8 @@ export async function decideApproval(
   status: "approved" | "declined",
   note?: string,
 ): Promise<{ message_id: number }> {
+  assertUuid(approvalId, "approval id");
+  assertNoNul(note, "note");
   return withRoomLock(d, seat.roomId, async (c) => {
     if (c.status === "readonly") throw errors.readonly();
     // Scoped to the caller's room: an id from another room is simply not found.

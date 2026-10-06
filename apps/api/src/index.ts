@@ -14,7 +14,7 @@ const { app } = createApp({
   log,
 });
 
-startExpiryJob(db, (e) => log.error({ err: e instanceof Error ? e.message : "unknown" }, "expiry job failed"));
+startExpiryJob(db, (e) => log.error({ errName: (e as Error)?.constructor?.name }, "expiry job failed"));
 
 app.listen(env.PORT, () => {
   log.info({ port: env.PORT }, "api listening");

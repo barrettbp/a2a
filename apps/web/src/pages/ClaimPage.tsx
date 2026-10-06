@@ -101,8 +101,10 @@ export function ClaimPage() {
             maxLength={60}
             autoComplete="given-name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => name !== "" && setNameError(name.trim() ? null : "Enter your name.")}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (e.target.value.trim()) setNameError(null);
+            }}
             error={nameError}
             disabled={!ok}
             required

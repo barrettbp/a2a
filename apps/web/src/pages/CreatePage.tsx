@@ -25,6 +25,8 @@ export function CreatePage() {
   const roomRef = useRef<HTMLInputElement>(null);
   const ownerRef = useRef<HTMLInputElement>(null);
 
+  // Errors appear on submit only and clear while typing. Showing or hiding a message on blur moves
+  // the button between mousedown and mouseup, and the click is lost.
   const validate = () => {
     const e: { room?: string; owner?: string } = {};
     if (!room.trim()) e.room = "Enter a room name.";
@@ -69,8 +71,10 @@ export function CreatePage() {
             placeholder="Proposal for Acme"
             maxLength={80}
             value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            onBlur={() => room !== "" && validate()}
+            onChange={(e) => {
+              setRoom(e.target.value);
+              if (e.target.value.trim()) setErrors((x) => ({ ...x, room: undefined }));
+            }}
             error={errors.room}
             required
           />
@@ -81,8 +85,10 @@ export function CreatePage() {
             maxLength={60}
             autoComplete="given-name"
             value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-            onBlur={() => owner !== "" && validate()}
+            onChange={(e) => {
+              setOwner(e.target.value);
+              if (e.target.value.trim()) setErrors((x) => ({ ...x, owner: undefined }));
+            }}
             error={errors.owner}
             required
           />

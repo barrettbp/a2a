@@ -87,7 +87,7 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 
 | ID | Sev | What | Suggested fix |
 | --- | --- | --- | --- |
-| F1 | M | Nothing was run in a real browser or on a phone (no browser in the build sandbox). Layout at 390 px, the native `<dialog>` sheet and confirm dialog, focus order, scroll pinning, the IME guard in a real Vietnamese keyboard, and clipboard behaviour are only covered by jsdom unit tests and a build. | Run the phone and laptop acceptance test. Fix what shows up. |
+| F1 | M | Partly checked. Two real Chromium browsers (390 px phone emulation and 1280 px desktop) ran create, claim, chat, an MCP agent with an approval round trip, a dropped stream and a reload. Still NOT checked: a real phone, real Safari and Firefox, a real Vietnamese keyboard (Telex, VNI) and the IME guard, real clipboard, focus order with a keyboard, screen readers. | Run the acceptance test on a real phone and laptop. |
 | F2 | L | Exit animations are missing for the bottom sheet, tablet panel, scrim and confirm dialog (native `<dialog>` closes instantly). Enter animations exist. | Animate with a `closing` class before calling `close()`. |
 | F3 | L | The copy button does not lock its width, so "Copy" to "Copied" can shift a few pixels. | Render both labels in a grid and hide one. |
 | F4 | I | The connect prompt (it contains the agent token) is kept in `sessionStorage` for the tab, as the task asked. Design 5.2 said React state only. It is never in `localStorage` and never logged. Any script running in the page could read it, and the page loads no third-party script (only the Google Fonts stylesheet). | Confirm, or drop the reload convenience. |
@@ -101,6 +101,10 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | F12 | I | Approve and Decline on the card send no note (design 4.2). A note needs `/decline note` typed in the composer. | Confirm. |
 | F13 | L | A message that fails with a network error but reached the server is shown as "Not sent". If the user retries, it is posted twice. The echo from SSE does not merge into a failed item. | Add a client id to `POST /rooms/:id/messages` and dedupe on the server. |
 | F14 | I | `docs/design-review.html` was skimmed, not compared pixel by pixel. | Review in a browser. |
+| F15 | L | The first-load banner on a phone is tall (about 95 px with the Copy link row) and sits on top of the timeline until it is dismissed. | Make it one line with the copy action inline, or collapse after the first scroll. |
+| F16 | L | The page load logs one 404 in the console (probably `/favicon.ico`). | Add a favicon. |
+| F17 | I | The browser acceptance script (two browsers, latency, stream drop) lives outside the repo. Nothing in CI runs a real browser. | Add a Playwright end-to-end test in Phase 5. |
+| F18 | L | The invite URL kept in `localStorage` is the only copy. Clearing site data or opening the room on another device loses it (the card says it can't be shown again). By design (design section 10). | Fine. Could offer "Create a new invite" if the API ever supports it. |
 
 ## Fixed (kept for the record)
 
@@ -117,3 +121,4 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | JSON-RPC batches on `/mcp` bypassed per-call limits. Now rejected. | same |
 | `WEB_ORIGIN` trailing slash, `X-Powered-By` header. | same |
 | `requireOwner` compared `:id` to the room id on `/approvals/:id` (401 for the real owner). | Phase 1 |
+| Create form: a validation message on blur shifted the layout, so the first click on "Create room" after typing in the last field was lost (mouse down moved the button before mouse up). Errors now appear on submit and clear while typing. Same fix on the claim form. Two regression tests added; both fail on the old code. | Phase 3 acceptance fixes |

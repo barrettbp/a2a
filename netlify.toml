@@ -3,7 +3,15 @@
   command = "pnpm install --frozen-lockfile && pnpm --filter @snapwork/web build"
   publish = "apps/web/dist"
 
+# Set VITE_API_URL (the public Railway URL of the API) in the Netlify site environment variables.
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Referrer-Policy = "no-referrer"
+    X-Content-Type-Options = "nosniff"

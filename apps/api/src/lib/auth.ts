@@ -46,3 +46,34 @@ export function requireOwner(d: Deps, opts: { roomParam?: boolean } = {}) {
 }
 
 export const getAuth = (res: Response): Auth => res.locals.auth as Auth;
+
+const AGENT_TOKEN = /^agt_[A-Za-z0-9_-]{20,}$/;
+
+/**
+ * Resolve the agent seat for /mcp. The token comes from the path or from
+ * `Authorization: Bearer agt_...`. If both are sent and differ, it is a 401.
+ * A readonly room still authenticates (reads work, posts fail with ROOM_READONLY);
+ * a deleted or expired room does not.
+ */
+export function requireAgent(d: Deps) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const pathToken = req.params.agent_token;
+      const header = /^Bearer (.+)$/.exec(req.header("authorization") ?? "")?.[1];
+      if (pathToken && header && pathToken !== header) throw errors.unauthorized();
+      const token = pathToken ?? header;
+      if (!token || !AGENT_TOKEN.test(token)) throw errors.unauthorized();
+      const [row] = await d.db
+        .select({ seat: seats, room: rooms })
+        .from(seats)
+        .innerJoin(rooms, eq(rooms.id, seats.roomId))
+        .where(eq(seats.tokenHash, hashToken(token)))
+        .limit(1);
+      if (!row || row.seat.kind !== "agent" || isRoomGone(row.room)) throw errors.unauthorized();
+      res.locals.auth = { seat: row.seat, room: row.room } satisfies Auth;
+      next();
+    } catch (e) {
+      next(e);
+    }
+  };
+}

@@ -13,6 +13,7 @@
     "db:seed": "tsx --env-file-if-exists=../../.env src/db/seed.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@snapwork/shared": "workspace:*",
     "cors": "^2.8.5",
     "drizzle-orm": "0.44.7",

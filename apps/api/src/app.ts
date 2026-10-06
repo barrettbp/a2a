@@ -9,6 +9,8 @@ import { AppError } from "./lib/errors";
 import { DEFAULT_LIMITS, type Limits } from "./lib/limits";
 import { RateLimiter } from "./lib/rateLimit";
 import { buildRouter } from "./routes";
+import { mcpRouter } from "./routes/mcp";
+import { WaiterRegistry } from "./services/agent";
 
 export interface AppOptions {
   db: Db;
@@ -23,6 +25,7 @@ export function createApp(opts: AppOptions) {
     db: opts.db,
     bus: new RoomBus(),
     limiter: new RateLimiter(),
+    waiters: new WaiterRegistry(),
     limits: { ...DEFAULT_LIMITS, ...opts.limits },
     apiPublicUrl: opts.apiPublicUrl.replace(/\/$/, ""),
     webOrigin: opts.webOrigin,
@@ -49,6 +52,7 @@ export function createApp(opts: AppOptions) {
     res.json({ ok: true });
   });
   app.use(buildRouter(deps));
+  app.use(mcpRouter(deps));
 
   app.use((_req, res) => {
     res.status(404).json({ error: { code: "NOT_FOUND", message: "Not found." } });

@@ -34,7 +34,7 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | B7 | I added the `roomFull` system message (en and vi) and the `INTERNAL` error code. Neither is in §8 or §6. | Confirm the Vietnamese text. |
 | B8 | Approval decision message body is English text (`Approved: ...`), not localised. | Confirm. |
 | B9 | `request_approval` and `report_done` are rate limited like §9 (5/min and 20/min). `leave_room` has my own limit of 3/min. | Confirm. |
-| B10 | SSE needs a Bearer header, so the browser `EventSource` cannot be used. Phase 3 must use a fetch stream. | Known, build in Phase 3. |
+| B10 | SSE needs a Bearer header, so the browser `EventSource` cannot be used. | Done in Phase 3: `apps/web/src/sse.ts` uses `fetch` with a stream reader and its own frame parser. Checked once against the real API in a scratch test (live, 401 gives fatal). |
 
 ## C. Not verified yet
 
@@ -82,6 +82,25 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | E1 | `.claude/agents/` does not exist (`coder`, `debugger`, `designer`, `security-reviewer`). The Phase 2 review used a general-purpose subagent with a written brief. |
 | E2 | `README.md` is only the title. The Definition of Done needs the how-to for Claude Code, Claude Desktop and ChatGPT. |
 | E3 | Sentry DSN (optional, Phase 5) not started. |
+
+## F. Web (Phase 3)
+
+| ID | Sev | What | Suggested fix |
+| --- | --- | --- | --- |
+| F1 | M | Nothing was run in a real browser or on a phone (no browser in the build sandbox). Layout at 390 px, the native `<dialog>` sheet and confirm dialog, focus order, scroll pinning, the IME guard in a real Vietnamese keyboard, and clipboard behaviour are only covered by jsdom unit tests and a build. | Run the phone and laptop acceptance test. Fix what shows up. |
+| F2 | L | Exit animations are missing for the bottom sheet, tablet panel, scrim and confirm dialog (native `<dialog>` closes instantly). Enter animations exist. | Animate with a `closing` class before calling `close()`. |
+| F3 | L | The copy button does not lock its width, so "Copy" to "Copied" can shift a few pixels. | Render both labels in a grid and hide one. |
+| F4 | I | The connect prompt (it contains the agent token) is kept in `sessionStorage` for the tab, as the task asked. Design 5.2 said React state only. It is never in `localStorage` and never logged. Any script running in the page could read it, and the page loads no third-party script (only the Google Fonts stylesheet). | Confirm, or drop the reload convenience. |
+| F5 | L | The SSE stream has no `room` event, so `paused` and `status` only refresh when the web refetches `GET /rooms/:id`. The web does that after every system message, after a `seat` event, while paused, and on every (re)connect. A short delay (about 0.4 s) is possible. | API: emit a `room` event `{paused, status}`. |
+| F6 | L | Only the latest 50 messages load. There is no "load older" control. `pending_approvals` only lists pending ones, so an approval's final state is derived from the structured `approval_decision` and `result` messages that are in the loaded page. A decision always sits after its request, so both load together unless the page cut falls between them (then the card shows Pending). | Add paging with `before_id` (API change) and a "Load earlier" button. |
+| F7 | L | Replay after a reconnect is told apart from live messages by a time window (1.5 s after the stream opens). A real new message inside that window loses its entrance animation and its screen reader announcement. | API could mark replayed frames, or the client could compare ids against the id at disconnect. |
+| F8 | I | Reconnect backoff is 1, 2, 4, 8, 10 s (the task said max 10 s, the design hint said 8 s). The client also retries on `online` and when the tab becomes visible again, and treats 45 s without bytes as a dead stream. | Confirm. |
+| F9 | I | Bookmark banner: the key `snapwork:banner-dismissed:{room}` holds `no` (show) or `yes` (dismissed), so the banner survives a reload until dismissed. | Fine, or split into two keys. |
+| F10 | L | If `localStorage` is blocked, the owner token stays in the URL fragment (it is not stripped) so a reload still works, the bookmark banner does not show, and the invite link is lost after the first load. | None needed. Documented. |
+| F11 | L | The "To" picker lists the other agent only when it has a name (claimed). Agent names that the agent changed with `join_room` update only after the next snapshot refresh (seat events). | Fine. |
+| F12 | I | Approve and Decline on the card send no note (design 4.2). A note needs `/decline note` typed in the composer. | Confirm. |
+| F13 | L | A message that fails with a network error but reached the server is shown as "Not sent". If the user retries, it is posted twice. The echo from SSE does not merge into a failed item. | Add a client id to `POST /rooms/:id/messages` and dedupe on the server. |
+| F14 | I | `docs/design-review.html` was skimmed, not compared pixel by pixel. | Review in a browser. |
 
 ## Fixed (kept for the record)
 

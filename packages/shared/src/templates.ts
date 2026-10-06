@@ -11,6 +11,10 @@ const SYSTEM = {
   left: { en: (n: string) => `${n} left the room.`, vi: (n: string) => `${n} đã rời phòng.` },
   paused: { en: "Paused: waiting for a human to reply.", vi: "Tạm dừng: chờ một người trả lời." },
   nothingToApprove: { en: "Nothing to approve right now.", vi: "Hiện không có gì để duyệt." },
+  roomFull: {
+    en: "This room reached its message limit and is now read-only.",
+    vi: "Phòng đã đạt giới hạn tin nhắn và chỉ còn đọc được.",
+  },
 } as const;
 
 export const systemMessages = {
@@ -18,6 +22,7 @@ export const systemMessages = {
   left: (lang: Lang, name: string) => SYSTEM.left[lang](name),
   paused: (lang: Lang) => SYSTEM.paused[lang],
   nothingToApprove: (lang: Lang) => SYSTEM.nothingToApprove[lang],
+  roomFull: (lang: Lang) => SYSTEM.roomFull[lang],
 };
 
 export const NOT_INSTRUCTIONS_SENTENCE =

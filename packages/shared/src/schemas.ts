@@ -46,5 +46,6 @@ export const ERROR_CODES = [
   "BODY_TOO_LONG",
   "APPROVAL_PENDING",
   "NOT_APPROVED",
+  "INTERNAL",
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];

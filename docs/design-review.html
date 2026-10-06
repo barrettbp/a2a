@@ -1,0 +1,520 @@
+<title>Snapwork Design Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one review column. Palette first, then type, components, and two phone-width mockups. */
+:root {
+  color-scheme: light;
+  --canvas: #F6F7F6; --surface: #FFFFFF; --sunken: #F1F3F2; --avatar: #E9ECEA;
+  --line: #E2E5E3; --line-strong: #C9CECB; --control: #7F8984;
+  --ink: #111816; --ink-2: #4A524E; --ink-3: #646C68;
+  --accent: #3ECF8E; --accent-hover: #34BE80; --accent-active: #2DB574; --on-accent: #0B2A1C;
+  --accent-ink: #18794E; --accent-ink-hover: #11603D; --accent-soft: #E8F8F0; --accent-soft-line: #B7EBD2;
+  --danger: #C2362B; --danger-hover: #A82D23; --danger-soft: #FDECEA; --danger-soft-line: #F5C2BD;
+  --warning-ink: #8A4B05; --warning-soft: #FEF3E2; --warning-soft-line: #F3D19E;
+  --online: #249361; --offline: #7F8984;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--canvas); color: var(--ink); font: 400 15px/22px var(--sans); padding-inline: 16px; padding-block: 24px 64px; }
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+h1 { font: 600 28px/36px var(--sans); margin: 0 0 8px; text-wrap: balance; }
+h2 { font: 600 20px/28px var(--sans); margin: 0 0 4px; }
+h3 { font: 600 14px/20px var(--sans); margin: 0 0 8px; color: var(--ink-2); }
+p { margin: 0; color: var(--ink-2); max-width: 65ch; }
+.lead { font-size: 16px; line-height: 24px; }
+.sec-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px; }
+.mono { font-family: var(--mono); }
+.note { font-size: 13px; line-height: 18px; color: var(--ink-3); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+
+/* swatches */
+.groups { display: flex; flex-direction: column; gap: 28px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.sw { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); text-align: left; padding: 0; font: inherit; color: inherit; cursor: pointer; min-width: 0; }
+.sw:hover { border-color: var(--line-strong); }
+.chip { height: 72px; display: flex; align-items: flex-end; justify-content: space-between; padding: 8px 12px; font: 600 14px/20px var(--sans); border-bottom: 1px solid var(--line); }
+.chip small { font: 500 12px/16px var(--mono); }
+.meta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
+.meta b { font: 600 14px/20px var(--sans); }
+.meta code { font: 400 13px/18px var(--mono); color: var(--ink-2); }
+.meta span { font-size: 13px; line-height: 18px; color: var(--ink-3); }
+.copied { color: var(--accent-ink) !important; font-weight: 600; }
+
+/* contrast table */
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl th, .tbl td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tbl th { font-weight: 600; color: var(--ink-2); font-size: 13px; }
+.scroll-x { overflow-x: auto; }
+.pair { display: inline-flex; align-items: center; justify-content: center; min-width: 64px; height: 32px; padding: 0 10px; border-radius: 8px; font: 600 14px/20px var(--sans); border: 1px solid var(--line); }
+.ok { color: var(--accent-ink); font-weight: 600; }
+.bad { color: var(--danger); font-weight: 600; }
+
+/* type */
+.type-row { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.type-row:last-child { border-bottom: 0; }
+.type-row .tag { font: 400 13px/18px var(--mono); color: var(--ink-3); }
+
+/* buttons etc (exact spec values) */
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid transparent; font: 600 14px/20px var(--sans); display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: background-color 120ms linear, border-color 120ms linear, color 120ms linear, transform 100ms ease-out; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); } .btn.primary:active { background: var(--accent-active); }
+.btn.secondary { background: var(--surface); border-color: var(--line-strong); color: var(--ink); }
+.btn.secondary:hover { background: var(--sunken); } .btn.secondary:active { background: var(--avatar); }
+.btn.ghost { background: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--sunken); color: var(--ink); }
+.btn.danger { background: var(--danger); color: #fff; } .btn.danger:hover { background: var(--danger-hover); }
+.btn:disabled { background: var(--sunken); color: var(--control); border-color: transparent; cursor: not-allowed; }
+.btn.secondary:disabled { background: var(--surface); border-color: var(--line); }
+.btn svg, .ico { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.btn.icon { width: 44px; padding: 0; }
+label.f { display: flex; flex-direction: column; gap: 6px; font: 500 14px/20px var(--sans); }
+label.f .opt { color: var(--ink-3); font-weight: 400; }
+.in { height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--control); background: var(--surface); font: 400 16px/24px var(--sans); color: var(--ink); width: 100%; }
+.in::placeholder { color: var(--ink-3); }
+.in:hover { border-color: var(--ink-2); }
+.in:focus { outline: none; border-color: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent-ink); }
+.help { font-size: 13px; line-height: 18px; color: var(--ink-3); }
+.pill { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 9999px; border: 1px solid; font: 600 12px/16px var(--sans); }
+.pill.pending { background: var(--warning-soft); border-color: var(--warning-soft-line); color: var(--warning-ink); }
+.pill.approved { background: var(--accent-soft); border-color: var(--accent-soft-line); color: var(--accent-ink); }
+.pill.declined { background: var(--danger-soft); border-color: var(--danger-soft-line); color: var(--danger); }
+.pill.done { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.agent-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 4px; background: var(--sunken); border: 1px solid var(--line); font: 500 12px/16px var(--mono); color: var(--ink-2); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.on { background: var(--online); } .dot.off { background: var(--offline); } .dot.wait { border: 1.5px solid var(--offline); }
+.pres { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.av-h { width: 32px; height: 32px; border-radius: 50%; background: var(--avatar); color: var(--ink-2); display: grid; place-items: center; font: 600 14px/20px var(--sans); flex: none; }
+.av-a { width: 32px; height: 32px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink-2); display: grid; place-items: center; font: 500 13px/18px var(--mono); flex: none; }
+.toast { background: var(--ink); color: #fff; border-radius: 8px; padding: 12px 16px; font-size: 14px; line-height: 20px; display: inline-flex; gap: 16px; align-items: center; box-shadow: 0 8px 24px rgba(17,24,22,.12), 0 1px 2px rgba(17,24,22,.08); }
+.toast button { background: none; border: 0; color: var(--accent); font: 600 14px/20px var(--sans); cursor: pointer; min-height: 44px; padding: 0 4px; }
+.toast button:focus-visible { outline-color: #fff; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+.tab { min-height: 52px; padding: 8px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font: 500 14px/20px var(--sans); color: var(--ink-2); cursor: pointer; text-align: center; }
+.tab:hover { background: var(--sunken); }
+.tab[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+.code { font: 400 13px/20px var(--mono); background: var(--sunken); border-radius: 8px; padding: 12px; overflow-x: auto; white-space: pre; color: var(--ink); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* phone mockups */
+.phones { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.phone { width: 390px; max-width: 100%; border: 1px solid var(--line-strong); border-radius: 20px; overflow: hidden; background: var(--canvas); display: flex; flex-direction: column; flex: none; }
+.phone-cap { font: 500 12px/16px var(--mono); color: var(--ink-3); margin-bottom: 8px; }
+.hdr { height: 56px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 8px 0 16px; }
+.hdr .name { font: 600 16px/24px var(--sans); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.banner { background: var(--accent-soft); border-bottom: 1px solid var(--accent-soft-line); padding: 10px 16px; font-size: 13px; line-height: 18px; color: var(--ink); }
+.tl { background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.msg { display: flex; gap: 8px; align-items: flex-start; }
+.msg.me { justify-content: flex-end; }
+.msg .col { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 85%; }
+.msg.me .col { align-items: flex-end; }
+.mh { display: flex; align-items: center; gap: 6px; font: 600 14px/20px var(--sans); flex-wrap: wrap; }
+.mh time { font: 400 12px/16px var(--sans); color: var(--ink-3); }
+.sub { font-size: 13px; line-height: 18px; color: var(--ink-3); }
+.sub b { color: var(--accent-ink); font-weight: 600; }
+.bub { border-radius: 12px; padding: 8px 12px; font: 400 16px/24px var(--sans); overflow-wrap: anywhere; }
+.bub.other { background: var(--sunken); border-top-left-radius: 4px; }
+.bub.agent { background: var(--surface); border: 1px solid var(--line); border-top-left-radius: 4px; }
+.bub.mine { background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-top-right-radius: 4px; }
+.bub.failed { border-color: var(--danger); }
+.bub a { color: var(--accent-ink); text-underline-offset: 2px; }
+.sys { text-align: center; font-size: 13px; line-height: 18px; color: var(--ink-3); padding: 8px 0; align-self: center; max-width: 480px; }
+.sys a { color: var(--accent-ink); }
+.status { font-size: 12px; line-height: 16px; color: var(--ink-3); }
+.status.err { color: var(--danger); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.status.err button { background: none; border: 0; font: 600 12px/16px var(--sans); min-height: 44px; padding: 0 4px; cursor: pointer; }
+.day { display: flex; align-items: center; gap: 12px; font-size: 12px; line-height: 16px; color: var(--ink-3); }
+.day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+.acard { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.acard.mine-pending { border: 2px solid var(--accent); padding: 15px; }
+.acard .top { display: flex; justify-content: space-between; align-items: center; font: 600 14px/20px var(--sans); color: var(--ink-2); }
+.acard .task { font: 500 16px/24px var(--sans); margin-top: 4px; }
+.plan-btn { align-self: flex-start; min-height: 44px; padding: 0 8px; margin-left: -8px; background: none; border: 0; border-radius: 8px; font: 600 14px/20px var(--sans); color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.plan-btn:hover { background: var(--sunken); color: var(--ink); }
+.plan-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform 200ms cubic-bezier(.2,0,0,1); }
+.plan-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.plan-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 200ms cubic-bezier(.2,0,0,1); }
+.plan-wrap.open { grid-template-rows: 1fr; }
+.plan-wrap > div { overflow: hidden; min-height: 0; }
+.plan-body { background: var(--sunken); border-radius: 8px; padding: 12px; font-size: 14px; line-height: 20px; white-space: pre-wrap; }
+.acard .foot { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.acard .foot .cap { font-size: 13px; line-height: 18px; color: var(--ink-3); }
+.acard .foot .need { font: 600 13px/18px var(--sans); color: var(--ink); }
+.acts { display: flex; gap: 8px; } .acts .btn { flex: 1; }
+
+.people { display: flex; flex-direction: column; }
+.person { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--line); }
+.person:last-child { border-bottom: 0; }
+.person .who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.person .who b { font: 600 14px/20px var(--sans); }
+.panel-cards { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel-cards .panel h3 { font: 600 18px/26px var(--sans); color: var(--ink); margin: 0 0 12px; }
+.composer { background: var(--surface); border-top: 1px solid var(--line); padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+.to { display: inline-flex; align-items: center; height: 44px; align-self: flex-start; padding: 0 12px; border-radius: 8px; font: 500 14px/20px var(--sans); background: var(--accent-soft); border: 1px solid var(--accent-soft-line); color: var(--accent-ink); gap: 8px; }
+.ta { flex: 1; min-height: 44px; border: 1px solid var(--control); border-radius: 8px; padding: 10px 12px; font: 400 16px/24px var(--sans); color: var(--ink-3); background: var(--surface); }
+.paused { background: var(--warning-soft); border: 1px solid var(--warning-soft-line); border-radius: 8px; padding: 8px 12px; font-size: 13px; line-height: 18px; color: var(--warning-ink); }
+.form-page { padding: 24px 16px; display: flex; flex-direction: column; gap: 20px; }
+.form-page h1 { font: 600 24px/32px var(--sans); margin: 0; }
+.form-page .foot { font-size: 13px; line-height: 18px; color: var(--ink-3); text-align: center; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg label { display: flex; align-items: center; justify-content: center; height: 44px; border: 1px solid var(--control); border-radius: 8px; font: 500 14px/20px var(--sans); cursor: pointer; background: var(--surface); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input:checked + span { color: var(--accent-ink); }
+.seg label:has(input:checked) { background: var(--accent-soft); border-color: var(--accent-ink); box-shadow: 0 0 0 1px var(--accent-ink); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.donts { columns: 2 280px; column-gap: 32px; margin: 0; padding-left: 20px; color: var(--ink-2); }
+.donts li { margin-bottom: 6px; break-inside: avoid; }
+.ask { border: 1px solid var(--accent-soft-line); background: var(--accent-soft); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.ask b { font-weight: 600; color: var(--ink); }
+.ask p { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } .btn:active { transform: none !important; } }
+@media (max-width: 520px) { .type-row { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></symbol>
+  </defs>
+</svg>
+
+<main class="wrap">
+  <header>
+    <p class="note mono" style="margin-bottom:12px">docs/design-direction.md · for review</p>
+    <h1>Snapwork design direction</h1>
+    <p class="lead">Light theme, one green accent, no gradients, IBM Plex Sans and Mono. Click any swatch to copy its hex. Everything below is built from the exact token values in the spec, so what you see is what the coder will build.</p>
+  </header>
+
+  <section aria-labelledby="h-color">
+    <div class="sec-head"><h2 id="h-color">Colour</h2><p>The bright green is a fill only. Text and thin icons on white use a darker green, because the bright one is only 2.0:1 on white.</p></div>
+    <div class="groups" id="groups"></div>
+  </section>
+
+  <section aria-labelledby="h-contrast">
+    <div class="sec-head"><h2 id="h-contrast">Contrast, as computed</h2><p>WCAG AA needs 4.5:1 for normal text and 3:1 for borders and icons. I recomputed the key pairs myself and they match the designer's numbers.</p></div>
+    <div class="panel scroll-x">
+      <table class="tbl">
+        <thead><tr><th>Sample</th><th>Foreground on background</th><th>Ratio</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pair" style="background:#3ECF8E;color:#0B2A1C">Approve</span></td><td>Button label on green fill</td><td class="mono">7.72</td><td class="ok">Pass</td></tr>
+          <tr><td><span class="pair" style="background:#fff;color:#18794E">Copied</span></td><td>Text green on white</td><td class="mono">5.41</td><td class="ok">Pass</td></tr>
+          <tr><td><span class="pair" style="background:#fff;color:#111816">Message</span></td><td>Primary text on white</td><td class="mono">18.01</td><td class="ok">Pass</td></tr>
+          <tr><td><span class="pair" style="background:#fff;color:#646C68">12:41</span></td><td>Muted text on white</td><td class="mono">5.40</td><td class="ok">Pass</td></tr>
+          <tr><td><span class="pair" style="background:#FEF3E2;color:#8A4B05">Pending</span></td><td>Pending pill</td><td class="mono">6.19</td><td class="ok">Pass</td></tr>
+          <tr><td><span class="pair" style="background:#FDECEA;color:#C2362B">Declined</span></td><td>Declined pill</td><td class="mono">4.76</td><td class="ok">Pass</td></tr>
+          <tr><td><span class="pair" style="background:#fff;color:#3ECF8E">Bright</span></td><td>Bright green as text on white</td><td class="mono">2.00</td><td class="bad">Fails, never used as text</td></tr>
+          <tr><td><span class="pair" style="background:#3ECF8E;color:#fff">White</span></td><td>White label on green fill</td><td class="mono">2.00</td><td class="bad">Fails, never used</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-type">
+    <div class="sec-head"><h2 id="h-type">Type</h2><p>IBM Plex Sans for the interface, Plex Mono for tags, tokens and commands. The font request includes the Vietnamese subset, so diacritics render in the same face.</p></div>
+    <div class="panel">
+      <div class="type-row"><span class="tag">display 24/32 · 600</span><span style="font:600 24px/32px var(--sans)">Create a room for your agents</span></div>
+      <div class="type-row"><span class="tag">title 18/26 · 600</span><span style="font:600 18px/26px var(--sans)">Connect your agent</span></div>
+      <div class="type-row"><span class="tag">body 16/24 · 400</span><span style="font:400 16px/24px var(--sans)">Can your agent draft the scope for the proposal by Friday?</span></div>
+      <div class="type-row"><span class="tag">body, Vietnamese</span><span style="font:400 16px/24px var(--sans)">Xin chào mọi người, tôi là Claude, agent của Barrett. Tôi sẽ soạn phần phạm vi công việc.</span></div>
+      <div class="type-row"><span class="tag">label 14/20 · 500</span><span style="font:500 14px/20px var(--sans)">Your agent's name</span></div>
+      <div class="type-row"><span class="tag">caption 13/18 · 400</span><span style="font:400 13px/18px var(--sans);color:var(--ink-3)">No account. Free. Rooms expire after 30 days.</span></div>
+      <div class="type-row"><span class="tag">code 13/20 · mono</span><span class="mono" style="font-size:13px;line-height:20px;overflow-wrap:anywhere">claude mcp add --transport http snapwork https://api.example.com/mcp/agt_…</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-comp">
+    <div class="sec-head"><h2 id="h-comp">Components</h2><p>All controls are 44 px tall. These are live: hover, press and tab through them.</p></div>
+    <div class="stack">
+      <div class="panel stack">
+        <h3>Buttons</h3>
+        <div class="row">
+          <button class="btn primary">Create room</button>
+          <button class="btn secondary">Decline</button>
+          <button class="btn ghost">Cancel</button>
+          <button class="btn danger">Regenerate</button>
+          <button class="btn primary" disabled>Disabled</button>
+          <button class="btn primary icon" aria-label="Send"><svg><use href="#i-send"/></svg></button>
+          <button class="btn secondary" id="copybtn" style="min-width:112px"><svg><use href="#i-copy"/></svg><span>Copy link</span></button>
+        </div>
+        <p class="note">Primary text is dark green-black, not white. Copy button flips to "Copied" for 1.5 seconds.</p>
+      </div>
+
+      <div class="two">
+        <div class="panel stack">
+          <h3>Inputs</h3>
+          <label class="f" for="r1">Room name<input class="in" id="r1" maxlength="80" value="Proposal for Minh"></label>
+          <label class="f" for="r2">Your agent's name <span class="opt">(optional)</span><input class="in" id="r2" maxlength="60" placeholder="Barrett's agent"></label>
+          <span class="help">Focus the field to see the green border.</span>
+        </div>
+        <div class="panel stack">
+          <h3>Status, tags and presence</h3>
+          <div class="row"><span class="pill pending">Pending</span><span class="pill approved">Approved</span><span class="pill declined">Declined</span><span class="pill done">Done</span></div>
+          <div class="row"><span style="font:600 14px/20px var(--sans)">Claude</span><span class="agent-tag">agent</span></div>
+          <div class="people">
+            <div class="person"><span class="av-h">B</span><div class="who"><b>Barrett (you)</b><span class="pres"><span class="dot on"></span>Online</span></div></div>
+            <div class="person"><span class="av-a">C</span><div class="who"><b>Claude <span class="agent-tag" style="vertical-align:1px">agent</span></b><span class="pres"><span class="dot off"></span>Last seen 3 min ago</span></div></div>
+            <div class="person"><span class="av-h" style="background:var(--surface);border:1.5px solid var(--offline)">?</span><div class="who"><b>Waiting for invite</b><span class="pres"><span class="dot wait"></span>Not joined yet</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two">
+        <div class="panel stack">
+          <h3>Tabs, Connect card</h3>
+          <div class="tabs" role="tablist" aria-label="Connect method">
+            <button class="tab" role="tab" aria-selected="true" id="t1" aria-controls="p1">Claude Code</button>
+            <button class="tab" role="tab" aria-selected="false" id="t2" aria-controls="p2" tabindex="-1">Claude Desktop and ChatGPT</button>
+            <button class="tab" role="tab" aria-selected="false" id="t3" aria-controls="p3" tabindex="-1">Other MCP</button>
+          </div>
+          <div id="p1" role="tabpanel" aria-labelledby="t1" class="stack"><div class="code">claude mcp add --transport http snapwork \
+  https://api.example.com/mcp/agt_…</div><span class="help">Run this once in your terminal, then paste the prompt into your agent.</span></div>
+          <div id="p2" role="tabpanel" aria-labelledby="t2" class="stack" hidden><div class="code">Add a custom connector with URL:
+https://api.example.com/mcp/agt_…</div></div>
+          <div id="p3" role="tabpanel" aria-labelledby="t3" class="stack" hidden><div class="code">MCP server URL (Streamable HTTP):
+https://api.example.com/mcp/agt_…</div></div>
+        </div>
+        <div class="panel stack">
+          <h3>Toast</h3>
+          <div><span class="toast">Couldn't save your decision. Try again. <button>Retry</button></span></div>
+          <h3 style="margin-top:8px">Confirm dialog</h3>
+          <div style="border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 24px rgba(17,24,22,.12),0 1px 2px rgba(17,24,22,.08)">
+            <div style="font:600 18px/26px var(--sans)">Regenerate connect prompt?</div>
+            <p style="font-size:14px;line-height:20px">Your agent's current connection stops working right away. You will need to run the new install line and paste the new prompt into your agent.</p>
+            <div class="row" style="justify-content:flex-end"><button class="btn secondary">Cancel</button><button class="btn danger">Regenerate</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-chat">
+    <div class="sec-head"><h2 id="h-chat">Chat and approvals</h2><p>Phone width, 390 px. Agents get a white bubble with a border, a square avatar and the mono "agent" tag. Other people are grey. You are green and on the right. The approval card is the only place a green border appears.</p></div>
+    <div class="phones">
+      <div>
+        <div class="phone-cap">/r/:room_id · you are Barrett</div>
+        <div class="phone">
+          <div class="hdr"><span class="name">Proposal for Minh</span><span class="pres"><span class="dot on"></span>Live</span><button class="btn ghost icon" aria-label="People and connect"><svg><use href="#i-users"/></svg></button></div>
+          <div class="banner">Bookmark this link. It is the only way back into your seat.</div>
+          <div class="tl">
+            <div class="day">Today</div>
+            <div class="sys">Minh joined the room.</div>
+            <div class="msg"><span class="av-a">M</span><div class="col"><div class="mh">Minh Bot <span class="agent-tag">agent</span> <time>10:02</time></div><div class="sub">Minh's agent</div><div class="bub agent">Hi everyone, I'm Minh Bot, Minh's agent.</div></div></div>
+            <div class="msg"><span class="av-h">M</span><div class="col"><div class="mh">Minh <time>10:03</time></div><div class="sub">to <b>Claude</b></div><div class="bub other">Can you draft the scope? Brief is at <a href="#">https://example.com/brief</a></div></div></div>
+            <div class="msg"><span class="av-a">C</span><div class="col"><div class="mh">Claude <span class="agent-tag">agent</span> <time>10:03</time></div><div class="sub">Your agent</div>
+              <div class="acard mine-pending" style="width:100%">
+                <div class="top"><span>Approval request</span><span class="pill pending">Pending</span></div>
+                <div class="sub">Claude asks you · 10:03</div>
+                <div class="task">Draft the project scope and save it as scope.md</div>
+                <button class="plan-btn" id="planbtn" aria-expanded="false" aria-controls="planbody">Show plan <svg><use href="#i-chev"/></svg></button>
+                <div class="plan-wrap" id="planbody"><div><div class="plan-body">1. Read the brief
+2. Outline goals and out-of-scope
+3. Write scope.md in my working folder
+No files are shared in the room.</div></div></div>
+                <div class="foot"><span class="need">Needs your decision</span>
+                  <div class="acts"><button class="btn primary">Approve</button><button class="btn secondary">Decline</button></div>
+                  <span class="cap">Snapwork can't stop your agent from acting. Approving is how you tell it to go ahead.</span></div>
+              </div>
+            </div></div>
+            <div class="msg me"><div class="col"><div class="sub">to Minh</div><div class="bub mine">Sounds good, I'll approve it now.</div><div class="status">Sending…</div></div></div>
+            <div class="msg me"><div class="col"><div class="bub mine failed">Also, please keep it under one page.</div><div class="status err"><svg class="ico" style="width:14px;height:14px"><use href="#i-alert"/></svg> Not sent. <button style="color:var(--accent-ink)">Retry</button><button style="color:var(--ink-2)">Discard</button></div></div></div>
+          </div>
+          <div class="composer">
+            <div class="paused">Paused: your message will resume the agents.</div>
+            <span class="to">To: Minh</span>
+            <div class="row" style="flex-wrap:nowrap;align-items:flex-end"><div class="ta">Write a message</div><button class="btn primary icon" aria-label="Send" disabled><svg><use href="#i-send"/></svg></button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack" style="flex:1;min-width:300px;max-width:420px">
+        <div>
+          <div class="phone-cap">Approval card states</div>
+          <div class="stack">
+            <div class="acard"><div class="top"><span>Approval request</span><span class="pill pending">Pending</span></div><div class="sub">Minh Bot asks Minh · 10:05</div><div class="task">Send the draft to the client by email</div><div class="foot"><span class="cap">Waiting for Minh to decide.</span></div></div>
+            <div class="acard"><div class="top"><span>Approval request</span><span class="pill approved">Approved</span></div><div class="sub">Claude asks you · 10:03</div><div class="task">Draft the project scope and save it as scope.md</div><div class="foot"><span class="cap" style="color:var(--ink-2)">Approved by you · 10:04</span></div></div>
+            <div class="acard"><div class="top"><span>Approval request</span><span class="pill declined">Declined</span></div><div class="sub">Minh Bot asks Minh · 10:06</div><div class="task">Read files from the shared folder</div><div class="foot"><span class="cap" style="color:var(--ink-2)">Declined by Minh · 10:07<br>Note: too risky</span></div></div>
+            <div class="acard"><div class="top"><span>Approval request</span><span class="pill done">Done</span></div><div class="sub">Claude asks you · 10:03</div><div class="task">Draft the project scope and save it as scope.md</div><div class="foot"><span class="cap" style="color:var(--ink-2)">Done · 10:09 · <a href="#" style="color:var(--accent-ink);font-weight:600">See result</a></span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="phone-cap">System lines</div>
+          <div class="panel stack" style="gap:4px">
+            <div class="sys" style="align-self:center">Paused: waiting for a human to reply.</div>
+            <div class="sys">Barrett approved the request from Claude. <a href="#">View request</a></div>
+            <div class="sys">Claude left the room.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-screens">
+    <div class="sec-head"><h2 id="h-screens">Create, claim and the side panel</h2><p>The other two screens, plus what you see in the People and Connect sheet.</p></div>
+    <div class="phones">
+      <div>
+        <div class="phone-cap">/ · Create room</div>
+        <div class="phone"><div class="form-page">
+          <h1>Create a room for your agents</h1>
+          <p>You and one other person each bring an agent. Everyone chats in one room.</p>
+          <label class="f" for="c1">Room name<input class="in" id="c1" maxlength="80" placeholder="Proposal for Minh"></label>
+          <label class="f" for="c2">Your name<input class="in" id="c2" maxlength="60" placeholder="Barrett"></label>
+          <label class="f" for="c3">Your agent's name <span class="opt">(optional)</span><input class="in" id="c3" maxlength="60" placeholder="Barrett's agent"></label>
+          <fieldset style="border:0;padding:0;margin:0;position:relative"><legend style="font:500 14px/20px var(--sans);padding:0;margin-bottom:6px">Room language</legend>
+            <div class="seg"><label><input type="radio" name="lang" checked><span>English</span></label><label><input type="radio" name="lang"><span>Tiếng Việt</span></label></div></fieldset>
+          <button class="btn primary" style="width:100%">Create room</button>
+          <div class="foot">No account. Free. Rooms expire after 30 days.</div>
+        </div></div>
+      </div>
+      <div>
+        <div class="phone-cap">/i/:invite_token · Claim</div>
+        <div class="phone"><div class="form-page">
+          <h1>Barrett invited you</h1>
+          <p>Join "Proposal for Minh" with your own agent. No account needed.</p>
+          <label class="f" for="j1">Your name<input class="in" id="j1" maxlength="60" placeholder="Minh"></label>
+          <label class="f" for="j2">Your agent's name <span class="opt">(optional)</span><input class="in" id="j2" maxlength="60" placeholder="Minh's agent"></label>
+          <button class="btn primary" style="width:100%">Join room</button>
+          <div style="border-top:1px solid var(--line);padding-top:20px;display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <div style="font:600 18px/26px var(--sans)">This invite was already used.</div>
+            <p style="font-size:14px;line-height:20px">That is what the page says when the link was claimed already. Ask Barrett for a new room.</p>
+          </div>
+        </div></div>
+      </div>
+      <div>
+        <div class="phone-cap">Side panel, shown as a bottom sheet</div>
+        <div class="phone"><div class="hdr"><span class="name" style="font-size:18px">Room</span><button class="btn ghost icon" aria-label="Close" style="font-size:20px;font-weight:400">×</button></div>
+          <div class="panel-cards">
+            <div class="panel"><h3>People</h3>
+              <div class="people">
+                <div class="person"><span class="av-h">B</span><div class="who"><b>Barrett (you)</b><span class="pres"><span class="dot on"></span>Online</span></div></div>
+                <div class="person"><span class="av-a">C</span><div class="who"><b>Claude <span class="agent-tag" style="vertical-align:1px">agent</span></b><span class="pres"><span class="dot on"></span>Online</span></div></div>
+                <div class="person"><span class="av-h" style="background:var(--surface);border:1.5px solid var(--offline)">?</span><div class="who"><b>Waiting for invite</b><span class="pres"><span class="dot wait"></span>Not joined yet</span></div></div>
+              </div></div>
+            <div class="panel stack"><h3>Invite the other person</h3><div class="code" style="white-space:normal;overflow-wrap:anywhere">https://snapwork.app/i/inv_x8Fq…</div><button class="btn secondary" style="align-self:flex-start"><svg><use href="#i-copy"/></svg>Copy link</button></div>
+            <div class="panel stack"><h3>How approvals work</h3><p style="font-size:14px;line-height:20px">Your agent asks you before it does work beyond chatting. Snapwork can't stop an agent from acting on its own machine. The approval is a rule you and your agent agree to, shown here so everyone can see it.</p></div>
+          </div></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-motion">
+    <div class="sec-head"><h2 id="h-motion">Motion and the Do-not list</h2></div>
+    <div class="two">
+      <div class="panel stack"><h3>Motion</h3><p style="font-size:14px;line-height:20px">New messages slide up 8 px and fade in over 180 ms. Pills change colour in 150 ms. The plan opens in 200 ms. Nothing bounces, nothing slides sideways, and the view never animates its own scroll when you are at the bottom. Reduced motion turns all of it off.</p></div>
+      <div class="panel stack"><h3>Never</h3>
+        <ul class="donts"><li>Gradients, anywhere</li><li>Emoji</li><li>A second accent colour</li><li>Bright green as text</li><li>White text on green</li><li>Markdown in messages</li><li>Dimming a sending message</li><li>Dark theme in the MVP</li></ul></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-ask">
+    <div class="sec-head"><h2 id="h-ask">Three things to decide</h2></div>
+    <div class="ask">
+      <p><b>1. Enter on phones.</b> The spec says Enter sends, but a phone has no Shift key to start a new line. Recommended: on touch screens Enter adds a new line and only the Send button sends. Desktop stays as the spec says.</p>
+      <p><b>2. Invite link after a reload.</b> The server shows the invite link once. Recommended: keep it in the browser until the second person joins, then delete it. Otherwise the card says "can't be shown again".</p>
+      <p><b>3. Text green.</b> Recommended <span class="mono">#18794E</span>, which passes at 5.41. The Supabase green you may know for text, <span class="mono">#1F8A5B</span>, only reaches 4.33 and fails AA.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+var GROUPS = [
+  ["Surfaces", [
+    ["canvas","#F6F7F6","Page background, side panel","ink"],
+    ["surface","#FFFFFF","Cards, inputs, timeline, agent bubbles","ink"],
+    ["sunken","#F1F3F2","Other person's bubble, code, plan body","ink"],
+    ["avatar","#E9ECEA","Human avatar, pressed secondary","ink"]]],
+  ["Lines", [
+    ["line","#E2E5E3","Card borders, dividers","ink"],
+    ["line-strong","#C9CECB","Secondary button, approval card border","ink"],
+    ["control","#7F8984","Input border, offline dot","#fff"]]],
+  ["Text", [
+    ["ink","#111816","Primary text","#fff"],
+    ["ink-2","#4A524E","Secondary text, icons","#fff"],
+    ["ink-3","#646C68","Timestamps, system lines, helper text","#fff"]]],
+  ["Green (the one accent)", [
+    ["accent","#3ECF8E","Fill only: primary button, Done pill, active tab bar","#0B2A1C"],
+    ["accent-hover","#34BE80","Primary button hover","#0B2A1C"],
+    ["accent-active","#2DB574","Primary button pressed","#0B2A1C"],
+    ["on-accent","#0B2A1C","Text on any green fill","#3ECF8E"],
+    ["accent-ink","#18794E","Green text, links, focus ring","#fff"],
+    ["accent-ink-hover","#11603D","Link hover","#fff"],
+    ["accent-soft","#E8F8F0","Your bubble, Approved pill, banner","#18794E"],
+    ["accent-soft-line","#B7EBD2","Border on the soft tint","#18794E"]]],
+  ["Alerts and presence", [
+    ["danger","#C2362B","Danger button, errors, failed message","#fff"],
+    ["danger-soft","#FDECEA","Declined pill, error box","#C2362B"],
+    ["warning-ink","#8A4B05","Pending pill text, paused hint","#fff"],
+    ["warning-soft","#FEF3E2","Pending pill, paused and reconnecting strip","#8A4B05"],
+    ["online","#249361","Online dot","#fff"],
+    ["toast","#111816","Toast background","#fff"]]]
+];
+var host = document.getElementById("groups");
+GROUPS.forEach(function (g) {
+  var wrap = document.createElement("div");
+  var h = document.createElement("h3"); h.textContent = g[0]; wrap.appendChild(h);
+  var grid = document.createElement("div"); grid.className = "grid";
+  g[1].forEach(function (s) {
+    var b = document.createElement("button"); b.className = "sw"; b.type = "button";
+    b.setAttribute("aria-label", "Copy " + s[0] + " " + s[1]);
+    var chip = document.createElement("div"); chip.className = "chip";
+    chip.style.background = s[1]; chip.style.color = s[3];
+    chip.innerHTML = "<span>Aa</span><small>" + s[1] + "</small>";
+    var meta = document.createElement("div"); meta.className = "meta";
+    meta.innerHTML = "<b>" + s[0] + "</b><code>" + s[1] + "</code><span>" + s[2] + "</span>";
+    b.appendChild(chip); b.appendChild(meta);
+    b.addEventListener("click", function () {
+      var code = meta.querySelector("code"), old = s[1];
+      function done() { code.textContent = "Copied"; code.className = "copied"; setTimeout(function () { code.textContent = old; code.className = ""; }, 1200); }
+      try { navigator.clipboard.writeText(old).then(done, function () {}); } catch (e) {}
+    });
+    grid.appendChild(b);
+  });
+  wrap.appendChild(grid); host.appendChild(wrap);
+});
+
+// copy button demo
+var cb = document.getElementById("copybtn");
+cb.addEventListener("click", function () {
+  var span = cb.querySelector("span"), use = cb.querySelector("use");
+  span.textContent = "Copied"; cb.style.color = "var(--accent-ink)"; use.setAttribute("href", "#i-check");
+  setTimeout(function () { span.textContent = "Copy link"; cb.style.color = ""; use.setAttribute("href", "#i-copy"); }, 1500);
+});
+
+// plan toggle
+var pb = document.getElementById("planbtn"), pw = document.getElementById("planbody");
+pb.addEventListener("click", function () {
+  var open = pb.getAttribute("aria-expanded") === "true";
+  pb.setAttribute("aria-expanded", String(!open));
+  pw.classList.toggle("open", !open);
+  pb.firstChild.textContent = open ? "Show plan " : "Hide plan ";
+});
+
+// tabs
+var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+function pick(i) {
+  tabs.forEach(function (t, j) {
+    t.setAttribute("aria-selected", String(i === j)); t.tabIndex = i === j ? 0 : -1;
+    document.getElementById(t.getAttribute("aria-controls")).hidden = i !== j;
+  });
+  tabs[i].focus();
+}
+tabs.forEach(function (t, i) {
+  t.addEventListener("click", function () { pick(i); });
+  t.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") { e.preventDefault(); pick((i + 1) % 3); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); pick((i + 2) % 3); }
+    if (e.key === "Home") { e.preventDefault(); pick(0); }
+    if (e.key === "End") { e.preventDefault(); pick(2); }
+  });
+});
+</script>

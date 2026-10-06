@@ -828,8 +828,12 @@ Usage notes:
 
 ---
 
-## 10. Open decisions for the product owner
+## 10. Decisions (approved by the product owner)
 
-1. Enter on phones: `PROJECT.md` says Enter sends. On touch keyboards that leaves no way to type a newline (no Shift key). This spec follows `PROJECT.md` literally. Alternative: on `pointer: coarse` devices Enter inserts a newline and only the Send button sends. Confirm which.
-2. Invite link after reload: `invite_url` is returned once at create and its token is hashed, so after a reload the creator can no longer copy it. Proposal: keep `invite_url` in `localStorage` next to the owner token (`snapwork:invite:{room_id}`) until H2 is claimed, then delete it. It is no more sensitive than the owner token already stored there. Confirm, or accept the "can't be shown again" state in 5.2.
-3. Text green: the requested `#1F8A5B` is 4.33:1 on white and fails AA, so text green is `#18794E` (5.41:1). The fill stays `#3ECF8E`. Confirm.
+The design was reviewed and approved. The three open points were settled by taking the recommended option:
+
+1. Enter on phones: on `pointer: coarse` devices Enter inserts a newline and only the Send button sends. On desktop Enter sends and Shift+Enter inserts a newline, as in `PROJECT.md`.
+2. Invite link after reload: keep `invite_url` in `localStorage` (`snapwork:invite:{room_id}`) next to the owner token until the second person has claimed, then delete it. If it is missing, show the "can't be shown again" state in 5.2.
+3. Text green is `#18794E` (5.41:1). The fill stays `#3ECF8E`.
+
+A visual version of this document is in `docs/design-review.html` (open it in a browser).

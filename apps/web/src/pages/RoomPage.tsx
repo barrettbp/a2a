@@ -63,34 +63,52 @@ export function RoomPage() {
   // When a link carries a different token than the one stored, ask the server first. Keep the stored token
   // if the link's token is refused, so a bad link cannot lock you out.
   const [token, setToken] = useState<string | null | "checking">(r.needsVerify ? "checking" : r.token);
+  const [startNotice, setStartNotice] = useState<string | null>(null);
   useEffect(() => {
     if (!r.needsVerify || !r.token) return;
     const ctrl = new AbortController();
-    api
-      .getRoom(roomId, r.token, ctrl.signal)
-      .then(() => {
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, 10_000);
+    const check = (t: string) => api.getRoom(roomId, t, ctrl.signal).then(() => true as const);
+    const isAuth = (e: unknown) => e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 404);
+    Promise.allSettled([check(r.token), r.fallback ? check(r.fallback) : Promise.reject(new Error("none"))]).then(([cand, stored]) => {
+      clearTimeout(timer);
+      if (ctrl.signal.aborted && !timedOut) return; // unmounted
+      // Rule: a stored key that still works is never replaced by a link. The other person in the room
+      // can send a link with their own valid key, and taking it would put you in their seat.
+      if (stored.status === "fulfilled") {
+        stripFragment();
+        if (cand.status === "fulfilled") {
+          setStartNotice("A link tried to open this room with a different key. Your own key was kept.");
+        }
+        setToken(r.fallback ?? null);
+        return;
+      }
+      if (cand.status === "fulfilled") {
+        // The stored key no longer works (or there was none) and the link's key does: take it.
         setItem("local", keys.token(roomId), r.token!);
         if (getItem("local", keys.banner(roomId)) === null) setItem("local", keys.banner(roomId), BANNER_SHOW);
         stripFragment();
         setToken(r.token);
-      })
-      .catch((e) => {
-        if (ctrl.signal.aborted) return;
-        if (e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 404)) {
-          stripFragment();
-          setToken(r.fallback ?? null);
-        } else {
-          // Could not reach the server: do not decide anything, show the stored token's room.
-          setToken(r.fallback ?? null);
-        }
-      });
-    return () => ctrl.abort();
+        return;
+      }
+      // Neither worked. Drop the link's key only if the server clearly refused it; on network trouble keep the URL so a reload retries.
+      if (isAuth(cand.reason)) stripFragment();
+      setToken(r.fallback ?? null);
+    });
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
   }, [r, roomId]);
   if (token === "checking") return <div className="p-6 text-small text-ink-2" role="status">Opening your room...</div>;
   if (!token) return <ErrorPage kind="no-key" />;
   return (
     <ToastProvider bottom="calc(var(--composer-h, 96px) + 16px)">
-      <RoomView key={roomId} roomId={roomId} token={token} openConnect={panel === "connect"} />
+      <RoomView key={roomId} roomId={roomId} token={token} openConnect={panel === "connect"} startNotice={startNotice} />
     </ToastProvider>
   );
 }
@@ -100,8 +118,12 @@ type Notice = "none" | "reconnecting" | "offline";
 
 const isSlash = (s: string) => /^\/(approve|decline)(\s|$)/i.test(s.trim());
 
-function RoomView({ roomId, token, openConnect }: { roomId: string; token: string; openConnect: boolean }) {
+function RoomView({ roomId, token, openConnect, startNotice }: { roomId: string; token: string; openConnect: boolean; startNotice: string | null }) {
   const { toast, announce } = useToast();
+  useEffect(() => {
+    if (startNotice) toast(startNotice);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startNotice]);
   const [state, dispatch] = useReducer(roomReducer, initialState);
   const stateRef = useRef(state);
   stateRef.current = state;

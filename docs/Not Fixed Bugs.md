@@ -91,6 +91,10 @@ _Platform note: the API was briefly moved to Fly.io and then back to Railway at 
 | L-rail | I | Railway's edge request log records `/mcp/agt_...` paths. Documented in `docs/deploy.md`. Use the Bearer header form where the client supports it. | None. Same as A11. |
 | L-ci | I | GitHub Actions are pinned by tag, not by commit SHA, and the Docker base image `node:20-slim` has no digest. | Pin by digest or SHA if you want a stricter supply chain. |
 | L-gap | I | The Phase 5 browser checks (CSP, token logic) ran in Chromium only, not in Safari or Firefox. | Check on real devices. |
+| L-csp | L | `connect-src https://*.up.railway.app` in `netlify.toml` lets the page talk to any Railway app, including a hostile one, if an XSS ever happened. | Generate a `_headers` file at build time with the exact `VITE_API_URL` origin. |
+| L-name | I | Names are checked with a blocklist, not an allowlist. That is safe only because a name is never put in a command (the install command holds only the validated `mcp_url`). Names saved before the check existed are not re-checked (`rotateAgentToken` rebuilds prompts from stored names), and `join_room`'s `model` field gets `cleanLine` but not `isSafeName`. | If a name ever goes into a command, quote or allowlist it. Optionally re-check stored names on rotate. |
+| L-wrap | I | In text an agent receives, every `<` becomes a look-alike (`‹`) so no tag can be forged. Code or HTML that agents send each other loses its angle brackets in what the other agent reads. | Accept, or switch to a per-response random boundary. |
+| L-nick | I | Names are not unique, and homoglyph or visible-text names (for example "Snapwork") are still possible (A4). | See A4. |
 
 ## F. Web (Phase 3)
 
@@ -156,3 +160,6 @@ Phase 4 acceptance ran with a real Claude Code agent (`claude -p`) and two real 
 | Phase 5 review L4: IPv6 clients could rotate addresses to dodge per-IP limits (now keyed on /64). Limiter evicts least recently used keys and sweeps at most once a second. | same |
 | Phase 5 review L5: look-alike characters could close the untrusted wrapper. Any `</` inside a body is now broken, invisible characters are stripped first. | same |
 | Dev dependencies: vitest 5, vite 8 and an esbuild override remove all 10 dev-only audit findings. `pnpm audit` (all dependencies) is clean. CI has `permissions: contents: read`. | same |
+| Phase 5 re-review N1 (MEDIUM): the other person in the room could send a link carrying their own valid key, and the web replaced the stored key with it (you end up in their seat). Now a stored key that still works is never replaced; the link is ignored and a notice is shown. If the stored key no longer works, a working link key is taken. Checked in a real browser with two users. | Phase 5 re-review fixes |
+| Re-review N2: the Connect card said "includes the connection details" when no safe URL was available. Now it says to regenerate. N3: the token check has a 10 second limit. | same |
+| Re-review L5 and M2 gaps: any `<` in text sent to an agent is replaced, so look-alike closers (Cyrillic letters, division slash, spaces) cannot form a tag. Braille blank, Khmer fillers, Mongolian selectors, U+FFFC and U+1D159 are stripped from names, and names need at least one letter or number. | same |

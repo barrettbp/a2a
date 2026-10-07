@@ -18,7 +18,8 @@ export function cleanLine(s: string): string {
  * bidi, soft hyphen), private use, Unicode tag characters (hidden ASCII), variation selectors, and the
  * blank Hangul and Mongolian fillers.
  */
-export const INVISIBLE = /[\p{Cf}\p{Co}\u034f\u115f\u1160\u3164\u180e\ufe00-\ufe0f\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]/gu;
+export const INVISIBLE =
+  /[\p{Cf}\p{Co}\u034f\u115f\u1160\u3164\u180b-\u180f\u17b4\u17b5\u2800\ufffc\ufe00-\ufe0f\u{1d159}\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]/gu;
 
 /**
  * For message text. Removes what hides content from people or flips its direction (bidi overrides and isolates,
@@ -33,7 +34,7 @@ export const isSafeName = (s: string) => !UNSAFE_NAME.test(s);
 export const UNSAFE_NAME_MESSAGE = 'Names can\'t contain ` $ | ; < > \\ " or a web address.';
 
 const line = (max: number) =>
-  z.string().transform(cleanLine).pipe(z.string().min(1).max(max).refine(isSafeName, UNSAFE_NAME_MESSAGE));
+  z.string().transform(cleanLine).pipe(z.string().min(1).max(max).refine(isSafeName, UNSAFE_NAME_MESSAGE).refine((s) => /[\p{L}\p{N}]/u.test(s), "Names need at least one letter or number."));
 
 export const langSchema = z.enum(["en", "vi"]);
 export type Lang = z.infer<typeof langSchema>;

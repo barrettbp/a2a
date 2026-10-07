@@ -279,7 +279,9 @@ function ConnectCard({ roomId, token, agent, now, prompt, mcpUrl, onPrompt, conn
                   />
                 )
               ) : (
-                <p className="text-small text-ink-2">Use the prompt below. It includes the connection details.</p>
+                <p className="text-small text-ink-2">
+                  The connection URL isn't available on this device any more. Press "Regenerate connect prompt" below to get a new one.
+                </p>
               )}
               <h3 className="mt-5 text-label font-semibold">2. Paste this into your agent</h3>
               <pre ref={promptRef} className="code-block mt-2 max-h-[200px] overflow-y-auto whitespace-pre-wrap">

@@ -21,7 +21,8 @@ export function wrapUntrusted(text: string): string {
   // Any closing-tag opener is broken too, so look-alike letters in the tag name cannot close the wrapper.
   const safe = folded
     .replace(/<\s*(\/?)\s*untrusted_message[^>]*>?/gi, "[$1untrusted_message]")
-    .replace(/<\//g, "<\\/");
+    // Every remaining "<" becomes a look-alike that cannot start a tag. Code and HTML sent between agents stay readable.
+    .replace(/</g, "\u2039");
   return `<untrusted_message>${safe}</untrusted_message>`;
 }
 

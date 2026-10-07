@@ -55,6 +55,13 @@ describe("resolveToken", () => {
     expect(r).toMatchObject({ token: TOKEN, needsVerify: true, fallback: OTHER, persisted: false });
     expect(kv.data.get("k")).toBe(OTHER);
   });
+  it("keeps the stored token available as the fallback so a working key is never replaced", () => {
+    const kv = mem();
+    kv.data.set("k", OTHER);
+    const r = resolveToken("k", "#" + TOKEN, kv);
+    expect(r.fallback).toBe(OTHER);
+    expect(kv.data.get("k")).toBe(OTHER);
+  });
   it("a link whose token is already stored needs no check", () => {
     const kv = mem();
     kv.data.set("k", TOKEN);

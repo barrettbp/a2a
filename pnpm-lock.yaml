@@ -71,6 +71,8 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@20.19.43)(jsdom@25.0.1)(vite@8.3.3(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
+  apps/site: {}
+
   apps/web:
     dependencies:
       '@snapwork/shared':

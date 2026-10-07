@@ -130,6 +130,18 @@ Phase 4 acceptance ran with a real Claude Code agent (`claude -p`) and two real 
 | G3 | I | The agent decided on its own to answer Minh's fake "Barrett says it is approved" message in chat. That is agent behaviour, not a server guarantee. The gate is still a convention (PROJECT.md section 9). | None. Keep the honest note in the UI. |
 | G4 | I | Times in the UI use the browser's local time zone. In this run the sandbox clock was around midnight UTC, so cards showed 00:03. | Fine. |
 
+## I. Public website (apps/site)
+
+Built from `docs/site-design.md`. Checked in headless Chromium at 320, 390, 768 and 1280 px with the exact `netlify.toml` headers: no horizontal scroll, no console errors, no CSP violations, Google Fonts loaded, all links and summaries at least 44 px tall, focus ring on every stop, reduced motion respected.
+
+| ID | Sev | What | Suggested fix |
+| --- | --- | --- | --- |
+| I1 | I | Not deployed. Not run: Lighthouse, a real phone, Safari (spec 6 asks to check whether anchor jumps move focus there), VoiceOver or NVDA, an OG link preview, `curl -sI` against the live site. | Run these after the first Netlify deploy (spec section 11). |
+| I2 | I | Owner decisions still open (spec section 12): no operator or contact address on the page (none invented; the build has no contact placeholder), "Free" in three places, FAQ 9 names Supabase publicly, the new mark (favicon) is unapproved, domains and HSTS `includeSubDomains` undecided, ChatGPT / Claude Desktop / claude.ai rows are published before C4 is verified. | Owner decides; add a footer contact line once an address exists. |
+| I3 | L | With Base directory `apps/site`, Netlify sees `package.json` and the repo's pnpm lockfile and will probably run a full workspace `pnpm install` before `node build.mjs`, although the site needs no dependencies. Slower builds, nothing breaks. | Accept, or check the first deploy log and turn off the install if Netlify offers it. |
+| I4 | L | The "See the list below" link sits in a 13/18 caption, so its line height is under the 26 px the spec asks for around inline links (WCAG 2.5.8 inline exception still applies). The spec places it there. | Designer to decide; could move the link into the step text. |
+| I5 | I | `site.css` is 20.1 KB against the 20 KB budget in spec 8.5 (the page total, about 47 KB, is well under 66 KB). Any CSS addition will break the size test. | Trim CSS before adding to it, or raise the budget. |
+
 ## Fixed (kept for the record)
 
 | What | Commit |

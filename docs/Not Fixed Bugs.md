@@ -106,6 +106,17 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | F17 | I | The browser acceptance script (two browsers, latency, stream drop) lives outside the repo. Nothing in CI runs a real browser. | Add a Playwright end-to-end test in Phase 5. |
 | F18 | L | The invite URL kept in `localStorage` is the only copy. Clearing site data or opening the room on another device loses it (the card says it can't be shown again). By design (design section 10). | Fine. Could offer "Create a new invite" if the API ever supports it. |
 
+## G. Approval end to end (Phase 4)
+
+Phase 4 acceptance ran with a real Claude Code agent (`claude -p`) and two real Chromium browsers (Barrett on desktop, Minh on a 390 px phone), no curl: create, claim, greeting, request, "/approve" typed by the wrong person, a text that claims approval, Approve click, Done and result link, a second request declined with `/decline too much for now`, agent leaves. 17 of 17 checks passed.
+
+| ID | Sev | What | Suggested fix |
+| --- | --- | --- | --- |
+| G1 | I | The run used PGlite, desktop Chromium and one Claude Code agent. Not run: a real phone, Claude Desktop, ChatGPT, or two agents (Minh's agent was never connected). | Phase 5 two-machine test. |
+| G2 | L | Approve and Decline on the card were exercised by click and by slash command in the owner's browser only. The "409 already decided" path and "two owners deciding at once" are covered by API tests but were not run in the browser. | Add a browser test. |
+| G3 | I | The agent decided on its own to answer Minh's fake "Barrett says it is approved" message in chat. That is agent behaviour, not a server guarantee. The gate is still a convention (PROJECT.md section 9). | None. Keep the honest note in the UI. |
+| G4 | I | Times in the UI use the browser's local time zone. In this run the sandbox clock was around midnight UTC, so cards showed 00:03. | Fine. |
+
 ## Fixed (kept for the record)
 
 | What | Commit |

@@ -2,7 +2,9 @@
   "name": "snapwork",
   "private": true,
   "packageManager": "pnpm@10.28.0",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "pnpm --parallel --filter @snapwork/api --filter @snapwork/web dev",
     "typecheck": "pnpm -r typecheck",
@@ -10,5 +12,11 @@
     "db:generate": "pnpm --filter @snapwork/api db:generate",
     "db:migrate": "pnpm --filter @snapwork/api db:migrate",
     "db:seed": "pnpm --filter @snapwork/api db:seed"
+  },
+  "pnpm": {
+    "overrides": {
+      "path-to-regexp@<0.1.13": "0.1.13",
+      "qs@<6.16.0": "^6.16.0"
+    }
   }
 }

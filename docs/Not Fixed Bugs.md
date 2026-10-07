@@ -17,9 +17,8 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | A7 | L | Every message goes to both agents. An agent also sees the other owner's `approval_request` and `approval_decision`. The rules block does not tell agents to match `meta.approval_id` against their own approval. | `packages/shared/src/templates.ts` (`rulesBlock`) | Add a rule: act only on a decision whose `approval_id` you created. |
 | A8 | L | `claimInvite` posts a "joined" system message even when the room is `readonly`. | `services/rooms.ts` | Skip the message when `c.status === "readonly"`. |
 | A9 | I | In a `readonly` room a human cannot decline a pending approval (`ROOM_READONLY`). | `services/approvals.ts` | Decide: allow decisions in readonly rooms, or document. |
-| A10 | I | `trust proxy` is `1`. It is only right with exactly one proxy hop (Railway). Extra hops (Cloudflare) make `req.ip` wrong and the IP limits useless. | `app.ts` | Make it an env setting. Check the real hop count at deploy. |
+| A10 | I | `trust proxy` is `1`. It is only right with exactly one proxy hop (Railway). Extra hops (Cloudflare) make `req.ip` wrong and the IP limits useless. | `app.ts` | Make it an env setting. Check the real hop count at deploy. Check on the first Railway deploy that different visitors get different `req.ip` values. |
 | A11 | L | Agent tokens sit in the URL path. Railway's edge may log the path. Accepted trade-off in §10, listed so it is not forgotten. | `routes/mcp.ts` | Prefer the header form for clients that support it. Say so in the README. |
-| A12 | I | `pnpm audit` is not in CI. There is no CI at all yet. §10 asks for it. | repo root | Add a GitHub Action (typecheck, test, audit). |
 
 ## B. Behaviour that differs from PROJECT.md or is a judgement call
 
@@ -41,19 +40,18 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 | ID | What | How to close it |
 | --- | --- | --- |
 | C1 | Never run against a real Supabase Postgres. Migration and tests ran on PGlite only. `db:migrate` and `db:seed` are untested on a real database. | Run both against a Supabase project (pooler URL). |
-| C2 | One POST to `/mcp` returned 400 at the start of a real Claude Code session. The rest returned 200 and the scenario worked. Cause not found (logs do not hold bodies). | Reproduce with a header dump in a scratch run. Suspect an unsupported `MCP-Protocol-Version` or a probe request. |
 | C3 | MCP Inspector was not used. Only the SDK client and one `claude -p` session were tested. | Run Inspector once. |
-| C4 | Claude Desktop and ChatGPT custom connectors were not tested. They may expect OAuth discovery (`/.well-known/...`) and get a JSON 404 from us. | Test both in Phase 5. If they need OAuth, this changes the design. Raise early. |
+| C4 | Claude Desktop, claude.ai and ChatGPT connectors were not tested with the real apps. Documentation says both accept a remote MCP URL with no OAuth (claude.ai: leave the OAuth fields empty; ChatGPT: Developer mode, "No authentication"). OpenAI's docs say Plus and Pro plans get read-only custom MCP connectors and write support needs Business, Enterprise or Education, which would block `post_message` and `request_approval` for ChatGPT users on Plus and Pro. Not verified by me. | Test both in the two-machine test (`docs/two-machine-test.md`). If ChatGPT cannot write on a plan, say so in the README and the product. |
 | C5 | Only one scenario was run with a real agent (one approval round trip). Agent-to-agent chat with two real agents was not run. | Phase 5 two-machine test. |
-| C6 | `Dockerfile`, `railway.json` and `netlify.toml` were never built or deployed. | Deploy once in Phase 5. |
-| C7 | Dev environment ran Node 22. The Dockerfile uses Node 20. pnpm ignored the esbuild build scripts (it worked anyway). | Run the tests on Node 20 in CI. |
-| C8 | Expiry job: `deleteExpiredRooms` is tested, the hourly timer is not. | Test with fake timers. |
+| C6 | `Dockerfile`, `railway.json` and `netlify.toml` were never deployed. The build sandbox has a Docker client but no daemon, so the image was not built. I simulated it: clean copy, `pnpm install --frozen-lockfile --prod --filter @snapwork/api...`, then the image's start command, and `/health` answered. Railway's `preDeployCommand` path (`/app/apps/api`) and `trust proxy` are unverified. | Deploy once and fix what differs (`docs/deploy.md`). |
+| C7 | Dev environment ran Node 22. The Dockerfile and CI use Node 20. pnpm ignored the esbuild build scripts (it worked anyway). | Confirm the CI run on Node 20 is green. |
 | C9 | SSE: replay past 500 messages (paging), the 20 s heartbeat, and many parallel streams are not tested. | Add tests. |
-| C10 | Rate limiter memory: the map grows by key until the sweep runs (every 1000 calls). No hard cap. | Add a max size. |
 | C11 | Rate limits live in process memory. A restart resets them. The SSE bus and waiters only work with one API process. | Fine for MVP. Needs LISTEN/NOTIFY and a shared store before running two instances. |
 | C12 | Polling: `wait_for_messages` polls the DB every 1 s as a safety net, one query per second per waiting agent. | Fine at this scale. |
 | C13 | A superseded wait can lag up to 1 s if the old call is in the middle of a query. | Accept. |
 | C14 | The seed script prints tokens to the console (dev only). | Do not run it in production. |
+| C15 | Cause of C2 found: Claude Code 2.1.292 starts with a `server/discover` probe sent with `MCP-Protocol-Version: 2026-07-28`. SDK 1.32.1 (the latest on npm) supports up to `2025-11-25`, so `validateProtocolVersion` returns 400 / -32000 "Unsupported protocol version". The client then falls back to `initialize` and everything works. This is correct per spec and no server change was made. The risk is a client that speaks only 2026-07-28 and does not fall back. Guarded by `apps/api/test/mcp-handshake.test.ts`. | Upgrade `@modelcontextprotocol/sdk` when a release supports 2026-07-28. Then update the handshake test and run `claude -p` once more. Check the fallback when C4 tests Claude Desktop and ChatGPT. |
+| C16 | `POST /mcp` with `Accept: application/json` only (no `text/event-stream`) gets 406 from the SDK, even though we set `enableJsonResponse` and only ever reply with JSON. This is spec-compliant: clients MUST send both. Claude Code sends both. Hand-written clients (curl, simple HTTP connectors) may not. | Only act if a real connector hits it in C4. Relaxing it would mean rewriting the `Accept` header in the route before `handleRequest`. |
 
 ## D. Edge cases from PROJECT.md section 11
 
@@ -77,11 +75,12 @@ Severity: **M** medium, **L** low, **I** info or decision needed.
 
 ## E. Process
 
+_Platform note: the API was briefly moved to Fly.io and then back to Railway at the owner's request (cost). Railway is not free either: a one-time 5 USD trial credit, then the 5 USD per month Hobby plan, per Railway's pricing page. A truly free host for a long-running process was not evaluated._
+
 | ID | What |
 | --- | --- |
 | E1 | `.claude/agents/` does not exist (`coder`, `debugger`, `designer`, `security-reviewer`). The Phase 2 review used a general-purpose subagent with a written brief. |
-| E2 | `README.md` is only the title. The Definition of Done needs the how-to for Claude Code, Claude Desktop and ChatGPT. |
-| E3 | Sentry DSN (optional, Phase 5) not started. |
+| E3 | Sentry (optional in the plan) was deliberately NOT added. Its default capture of request data, headers and breadcrumbs conflicts with the rule to never log a token or message body, and it needs a careful scrubbing setup to be safe. | Add later with `sendDefaultPii: false`, `beforeSend` that drops request data, and a test, if wanted. |
 
 ## F. Web (Phase 3)
 
@@ -133,3 +132,8 @@ Phase 4 acceptance ran with a real Claude Code agent (`claude -p`) and two real 
 | `WEB_ORIGIN` trailing slash, `X-Powered-By` header. | same |
 | `requireOwner` compared `:id` to the room id on `/approvals/:id` (401 for the real owner). | Phase 1 |
 | Create form: a validation message on blur shifted the layout, so the first click on "Create room" after typing in the last field was lost (mouse down moved the button before mouse up). Errors now appear on submit and clear while typing. Same fix on the claim form. Two regression tests added; both fail on the old code. | Phase 3 acceptance fixes |
+| `pnpm audit` and CI: `.github/workflows/ci.yml` runs typecheck, tests, web build and `pnpm audit --prod --audit-level high`. 9 advisories were found in production dependencies (2 high: drizzle-orm identifier escaping, path-to-regexp) and fixed by upgrading express to 4.22.3, drizzle-orm to 0.45.3, react-router-dom to 7.18.4 and pnpm overrides for qs and path-to-regexp. The CI file has not run on GitHub yet. | Phase 5 |
+| C2 explained: the one `POST /mcp` that returned 400 is Claude Code probing `server/discover` with `MCP-Protocol-Version: 2026-07-28`. SDK 1.32.1 (latest) rejects unknown versions with 400, as the spec says, and Claude Code falls back to the normal handshake. No server change. Guard test `mcp-handshake.test.ts`. Remaining risk: a client that speaks only the new version (see C15). | Phase 5 debug (Opus subagent) |
+| Expiry job timer now tested with fake timers (runs hourly, deletes expired rooms, timer is unref'd). | Phase 5 |
+| Rate limiter has a hard cap of 50,000 tracked keys (expired first, then oldest). Found and fixed a bug in the first version of the cap: a new key was swept away before its first call was recorded. Test added. | Phase 5 |
+| `README.md` written: what it is, how to create a room, connect Claude Code, Claude Desktop and ChatGPT, the approval honesty note, known limits, run and deploy. | Phase 5 |

@@ -2,6 +2,8 @@
 export class RateLimiter {
   private hits = new Map<string, { times: number[]; windowMs: number }>();
   private calls = 0;
+  /** Hard cap on tracked keys so a flood of distinct keys cannot grow memory without bound. */
+  static readonly MAX_KEYS = 50_000;
 
   /** Returns true when the call is allowed. */
   allow(key: string, max: number, windowMs: number): boolean {
@@ -11,9 +13,20 @@ export class RateLimiter {
     entry.windowMs = windowMs;
     entry.times = entry.times.filter((t) => now - t < windowMs);
     this.hits.set(key, entry);
-    if (entry.times.length >= max) return false;
-    entry.times.push(now);
-    return true;
+    const allowed = entry.times.length < max;
+    if (allowed) entry.times.push(now);
+    // Record the call before evicting, or a brand new (still empty) key would be swept away at once.
+    if (this.hits.size > RateLimiter.MAX_KEYS) this.evict(now);
+    return allowed;
+  }
+
+  /** Over the cap: drop expired keys first, then the oldest-inserted ones. */
+  private evict(now: number) {
+    this.sweep(now);
+    for (const k of this.hits.keys()) {
+      if (this.hits.size <= RateLimiter.MAX_KEYS) break;
+      this.hits.delete(k);
+    }
   }
 
   /** Drop only keys whose own window has fully passed. */

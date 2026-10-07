@@ -1,4 +1,4 @@
-import { cleanLine, greeting, rulesBlock, systemMessages } from "@snapwork/shared";
+import { INVISIBLE, UNSAFE_NAME_MESSAGE, cleanLine, greeting, isSafeName, rulesBlock, stripHidden, systemMessages } from "@snapwork/shared";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { approvals, messages, rooms, seats } from "../db/schema";
 import type { Seat } from "../lib/auth";
@@ -17,8 +17,11 @@ const ONLINE_MS = 90_000;
 /** Wrap text from other participants. Any closing tag inside is neutralised first. */
 export function wrapUntrusted(text: string): string {
   // NFKC folds fullwidth brackets; zero-width characters are dropped so the tag cannot be hidden.
-  const folded = text.normalize("NFKC").replace(/[\u200b-\u200f\u2060\ufeff]/g, "");
-  const safe = folded.replace(/<\s*(\/?)\s*untrusted_message[^>]*>?/gi, "[$1untrusted_message]");
+  const folded = text.normalize("NFKC").replace(INVISIBLE, "");
+  // Any closing-tag opener is broken too, so look-alike letters in the tag name cannot close the wrapper.
+  const safe = folded
+    .replace(/<\s*(\/?)\s*untrusted_message[^>]*>?/gi, "[$1untrusted_message]")
+    .replace(/<\//g, "<\\/");
   return `<untrusted_message>${safe}</untrusted_message>`;
 }
 
@@ -130,6 +133,7 @@ export const touch = (d: Deps, seat: Seat) =>
 export async function joinRoom(d: Deps, seat: Seat, input: { agent_name: string; model?: string }) {
   const requested = cleanLine(input.agent_name);
   if (requested.length < 1 || requested.length > 60) throw errors.validation("agent_name must be 1 to 60 characters.");
+  if (!isSafeName(requested)) throw errors.validation(`agent_name: ${UNSAFE_NAME_MESSAGE}`);
   const model = input.model ? cleanLine(input.model) : undefined;
   if (model && model.length > 60) throw errors.validation("model must be at most 60 characters.");
 
@@ -195,7 +199,8 @@ export async function waitForMessages(
   signal?: AbortSignal,
 ) {
   assertCursor(input.after_id, "after_id");
-  const timeoutMs = Math.min(Math.max(input.timeout_s ?? 25, 1), 50) * 1000;
+  const wantedS = Number.isFinite(input.timeout_s) ? Math.floor(input.timeout_s!) : 25;
+  const timeoutMs = Math.min(Math.max(wantedS, 1), 50) * 1000;
   const deadline = Date.now() + timeoutMs;
   const w = d.waiters.open(seat.id);
   const unsubscribe = d.bus.subscribe(seat.roomId, (e) => {
@@ -269,8 +274,8 @@ export async function requestApproval(
   seat: Seat,
   input: { task: string; plan?: string; requested_by_message_id?: number },
 ) {
-  const task = input.task.trim();
-  const plan = input.plan?.trim() || null;
+  const task = stripHidden(input.task).trim();
+  const plan = input.plan ? stripHidden(input.plan).trim() || null : null;
   if (task.length < 1 || task.length > 500) throw errors.validation("task must be 1 to 500 characters.");
   if (plan && plan.length > 2000) throw errors.validation("plan must be at most 2000 characters.");
   assertNoNul(task, "task");
@@ -337,7 +342,8 @@ export async function checkApproval(d: Deps, seat: Seat, input: { approval_id: s
   return { status: ap.status, note: ap.note, decided_at: ap.decidedAt?.toISOString() ?? null };
 }
 
-export async function reportDone(d: Deps, seat: Seat, input: { approval_id: string; result: string }) {
+export async function reportDone(d: Deps, seat: Seat, rawInput: { approval_id: string; result: string }) {
+  const input = { ...rawInput, result: stripHidden(rawInput.result) };
   if (input.result.length > d.limits.bodyMax) throw errors.bodyTooLong(d.limits.bodyMax);
   if (!input.result.trim()) throw errors.validation("result is empty.");
   assertNoNul(input.result, "result");

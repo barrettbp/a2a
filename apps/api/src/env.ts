@@ -11,10 +11,12 @@ const dev = z.object({
   API_PUBLIC_URL: z.string().url().default("http://localhost:3001"),
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
 });
+// Agent tokens travel inside these URLs, so production must use https.
+const https = z.string().url().refine((u) => u.startsWith("https://"), "must start with https://");
 const prod = z.object({
   ...base,
-  API_PUBLIC_URL: z.string().url(),
-  WEB_ORIGIN: z.string().url(),
+  API_PUBLIC_URL: https,
+  WEB_ORIGIN: https,
 });
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env) {

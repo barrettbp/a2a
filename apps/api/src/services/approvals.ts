@@ -1,3 +1,4 @@
+import { stripHidden } from "@snapwork/shared";
 import { and, eq } from "drizzle-orm";
 import type { Seat } from "../lib/auth";
 import type { Deps } from "../lib/deps";
@@ -14,6 +15,7 @@ export async function decideApproval(
   note?: string,
 ): Promise<{ message_id: number }> {
   assertUuid(approvalId, "approval id");
+  note = note ? stripHidden(note) : note;
   assertNoNul(note, "note");
   return withRoomLock(d, seat.roomId, async (c) => {
     if (c.status === "readonly") throw errors.readonly();

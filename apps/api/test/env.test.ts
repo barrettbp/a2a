@@ -10,6 +10,11 @@ describe("loadEnv", () => {
   it("requires both URLs in production and names the missing keys", () => {
     expect(() => loadEnv({ NODE_ENV: "production", DATABASE_URL: "postgresql://x" })).toThrow(/API_PUBLIC_URL, WEB_ORIGIN/);
   });
+  it("refuses http URLs in production", () => {
+    expect(() =>
+      loadEnv({ NODE_ENV: "production", DATABASE_URL: "postgresql://x", API_PUBLIC_URL: "http://api.example.com", WEB_ORIGIN: "https://app.example.com" }),
+    ).toThrow(/API_PUBLIC_URL/);
+  });
   it("strips trailing slashes and never prints values", () => {
     const e = loadEnv({ NODE_ENV: "production", DATABASE_URL: "postgresql://x", API_PUBLIC_URL: "https://api.example.com/", WEB_ORIGIN: "https://app.example.com//" });
     expect(e.API_PUBLIC_URL).toBe("https://api.example.com");

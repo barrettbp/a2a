@@ -79,7 +79,7 @@ export const api = {
       body: { status },
     }),
   rotateToken: (token: string, agentSeatId: string) =>
-    request<{ agent_token: string; connect_prompt: string }>(`/seats/${enc(agentSeatId)}/rotate-token`, {
+    request<{ agent_token: string; mcp_url: string; connect_prompt: string }>(`/seats/${enc(agentSeatId)}/rotate-token`, {
       method: "POST",
       token,
     }),

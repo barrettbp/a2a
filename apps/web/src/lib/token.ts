@@ -20,12 +20,23 @@ export interface ResolvedToken {
   firstOnDevice: boolean;
   /** safe to strip the fragment from the address bar (the token is stored) */
   persisted: boolean;
+  /**
+   * The fragment token differs from one already stored for this room. Nothing was overwritten: the caller
+   * must check the fragment token with the server first, and keep `fallback` if the server refuses it.
+   */
+  needsVerify?: boolean;
+  /** the stored token to fall back to when `needsVerify` is set */
+  fallback?: string | null;
 }
 
 export function resolveToken(tokenKey: string, hash: string, kv: TokenStore): ResolvedToken {
   const frag = parseFragment(hash);
   const stored = kv.get(tokenKey);
   if (frag) {
+    // A link someone sent you must never silently replace a token you already have (it would lock you out).
+    if (stored && OWNER_TOKEN.test(stored) && stored !== frag) {
+      return { token: frag, fromFragment: true, firstOnDevice: false, persisted: false, needsVerify: true, fallback: stored };
+    }
     const persisted = stored === frag ? true : kv.set(tokenKey, frag);
     return { token: frag, fromFragment: true, firstOnDevice: stored !== frag, persisted };
   }

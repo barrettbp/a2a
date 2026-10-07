@@ -2,6 +2,7 @@
 export class RateLimiter {
   private hits = new Map<string, { times: number[]; windowMs: number }>();
   private calls = 0;
+  private lastSweep = 0;
   /** Hard cap on tracked keys so a flood of distinct keys cannot grow memory without bound. */
   static readonly MAX_KEYS = 50_000;
 
@@ -12,6 +13,8 @@ export class RateLimiter {
     const entry = this.hits.get(key) ?? { times: [], windowMs };
     entry.windowMs = windowMs;
     entry.times = entry.times.filter((t) => now - t < windowMs);
+    // Delete and set again: Map keeps insertion order, so this moves the key to the "most recently used" end.
+    this.hits.delete(key);
     this.hits.set(key, entry);
     const allowed = entry.times.length < max;
     if (allowed) entry.times.push(now);
@@ -20,9 +23,12 @@ export class RateLimiter {
     return allowed;
   }
 
-  /** Over the cap: drop expired keys first, then the oldest-inserted ones. */
+  /** Over the cap: drop expired keys (at most once a second), then the least recently used. */
   private evict(now: number) {
-    this.sweep(now);
+    if (now - this.lastSweep >= 1000) {
+      this.lastSweep = now;
+      this.sweep(now);
+    }
     for (const k of this.hits.keys()) {
       if (this.hits.size <= RateLimiter.MAX_KEYS) break;
       this.hits.delete(k);

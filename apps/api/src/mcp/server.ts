@@ -29,7 +29,7 @@ const fail = (code: string, message: string): Result => ({
  * no tool takes a room id or a seat id from the caller.
  * Lengths are checked inside the services so agents get our error codes, not a schema error.
  */
-export function buildMcpServer(d: Deps, seat: Seat, signal: AbortSignal, log?: (msg: string) => void) {
+export function buildMcpServer(d: Deps, seat: Seat, signal: AbortSignal) {
   const server = new McpServer({ name: "snapwork", version: "0.1.0" });
 
   function tool<S extends z.ZodRawShape>(
@@ -47,7 +47,8 @@ export function buildMcpServer(d: Deps, seat: Seat, signal: AbortSignal, log?: (
           return ok(await fn(args));
         } catch (e) {
           if (e instanceof AppError) return fail(e.code, e.message);
-          log?.(`tool ${name} failed`);
+          const x = e as { cause?: { code?: string }; code?: string };
+          d.log?.error({ errName: (e as Error)?.constructor?.name ?? "unknown", pgCode: x?.cause?.code ?? x?.code, where: `mcp tool ${name}` }, "tool failed");
           return fail("INTERNAL", "Something went wrong.");
         }
       }) as never,

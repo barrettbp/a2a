@@ -1,4 +1,4 @@
-import { systemMessages, type Lang } from "@snapwork/shared";
+import { stripHidden, systemMessages, type Lang } from "@snapwork/shared";
 import { and, asc, desc, eq, gt, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { approvals, messages, rooms, seats } from "../db/schema";
@@ -141,7 +141,7 @@ export async function postMessage(
   seat: Seat,
   input: { body: string; toSeatId?: string | null },
 ): Promise<{ id: number }> {
-  const { body } = input;
+  const body = stripHidden(input.body);
   if (body.length > d.limits.bodyMax) throw errors.bodyTooLong(d.limits.bodyMax);
   if (!body.trim()) throw errors.validation("Message is empty.");
   assertNoNul(body, "Message");
@@ -207,7 +207,8 @@ export async function readMessages(
   roomId: string,
   opts: { afterId?: number; limit?: number },
 ): Promise<{ messages: ReturnType<typeof messageWire>[]; last_id: number }> {
-  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
+  const wanted = Number.isFinite(opts.limit) ? Math.floor(opts.limit!) : 50;
+  const limit = Math.min(Math.max(wanted, 1), 200);
   let rows: MessageRow[];
   if (opts.afterId === undefined) {
     // No cursor: the latest page, oldest first.

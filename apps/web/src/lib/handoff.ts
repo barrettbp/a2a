@@ -10,4 +10,5 @@ import type { CreateResult } from "../types";
 export function saveRoomHandoff(r: CreateResult): void {
   if (r.invite_url) setItem("local", keys.invite(r.room_id), r.invite_url);
   setItem("session", keys.prompt(r.room_id), r.connect_prompt);
+  setItem("session", keys.mcpUrl(r.room_id), r.mcp_url);
 }

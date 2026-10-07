@@ -48,10 +48,23 @@ describe("resolveToken", () => {
   it("returns null when there is nothing", () => {
     expect(resolveToken("k", "", mem()).token).toBeNull();
   });
-  it("a new fragment replaces a different stored token", () => {
+  it("a link with a different token does NOT replace the stored token until the server accepts it", () => {
     const kv = mem();
     kv.data.set("k", OTHER);
-    expect(resolveToken("k", "#" + TOKEN, kv).token).toBe(TOKEN);
+    const r = resolveToken("k", "#" + TOKEN, kv);
+    expect(r).toMatchObject({ token: TOKEN, needsVerify: true, fallback: OTHER, persisted: false });
+    expect(kv.data.get("k")).toBe(OTHER);
+  });
+  it("a link whose token is already stored needs no check", () => {
+    const kv = mem();
+    kv.data.set("k", TOKEN);
+    expect(resolveToken("k", "#" + TOKEN, kv).needsVerify).toBeUndefined();
+  });
+  it("a malformed stored token does not block a good link", () => {
+    const kv = mem();
+    kv.data.set("k", "junk");
+    const r = resolveToken("k", "#" + TOKEN, kv);
+    expect(r.needsVerify).toBeUndefined();
     expect(kv.data.get("k")).toBe(TOKEN);
   });
   it("reports persisted=false when storage fails, so the fragment stays in the URL", () => {

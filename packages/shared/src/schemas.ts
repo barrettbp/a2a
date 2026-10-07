@@ -7,13 +7,33 @@ import { z } from "zod";
 export function cleanLine(s: string): string {
   return s
     .normalize("NFKC")
-    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, "")
+    .replace(INVISIBLE, "")
     .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-const line = (max: number) => z.string().transform(cleanLine).pipe(z.string().min(1).max(max));
+/**
+ * Characters that show nothing but can carry text or change how it reads: format characters (zero-width,
+ * bidi, soft hyphen), private use, Unicode tag characters (hidden ASCII), variation selectors, and the
+ * blank Hangul and Mongolian fillers.
+ */
+export const INVISIBLE = /[\p{Cf}\p{Co}\u034f\u115f\u1160\u3164\u180e\ufe00-\ufe0f\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]/gu;
+
+/**
+ * For message text. Removes what hides content from people or flips its direction (bidi overrides and isolates,
+ * tag characters, soft hyphen, zero-width space, fillers) but keeps ZWJ, ZWNJ and VS16 so emoji and scripts that need them still work.
+ */
+export const HIDDEN_IN_TEXT = /[\u00ad\u200b\u2060-\u2064\ufeff\u202a-\u202e\u2066-\u2069\u115f\u1160\u3164\u180e\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}]/gu;
+export const stripHidden = (s: string) => s.replace(HIDDEN_IN_TEXT, "");
+
+/** Names go into install lines and prompts that people paste into a terminal or an agent. */
+const UNSAFE_NAME = /[`$|;<>\\"]|:\/\//;
+export const isSafeName = (s: string) => !UNSAFE_NAME.test(s);
+export const UNSAFE_NAME_MESSAGE = 'Names can\'t contain ` $ | ; < > \\ " or a web address.';
+
+const line = (max: number) =>
+  z.string().transform(cleanLine).pipe(z.string().min(1).max(max).refine(isSafeName, UNSAFE_NAME_MESSAGE));
 
 export const langSchema = z.enum(["en", "vi"]);
 export type Lang = z.infer<typeof langSchema>;

@@ -7,6 +7,7 @@ Three pieces: Postgres on Supabase, the API on Railway, the web app on Netlify. 
 1. Create a project. Choose a region near your users (Singapore if you are in Vietnam).
 2. Open the project, then **Connect**. Copy the **Session pooler** connection string (port 5432, host like `aws-0-REGION.pooler.supabase.com`, user `postgres.PROJECTREF`). Add `?sslmode=require` at the end if it is not there.
    - Use the session pooler rather than the direct connection: the direct host can be IPv6 only, which not every network reaches.
+   - `sslmode=require` encrypts the connection but does not check the server certificate. For stricter checking use `sslmode=verify-full` with the Supabase CA certificate (see the Supabase docs). That needs the certificate file in the image, so it is not set up here (item L-ssl in `Not Fixed Bugs.md`).
    - The transaction pooler (port 6543) also works. The API detects port 6543 and turns off prepared statements, which that pooler does not support.
 3. Keep that string. It is the `DATABASE_URL` secret. Never put it in the repo.
 
@@ -44,8 +45,9 @@ Railway runs the API from the Dockerfile. `railway.json` in the repo root holds 
 curl https://YOUR-DOMAIN.up.railway.app/health      # {"ok":true}
 ```
 
-   The service **Logs** tab shows JSON lines with route patterns only, no tokens or message text.
+   The service **Logs** tab shows the app's JSON lines with route patterns only, no tokens or message text. Railway's own HTTP request logs are separate and record the full path, which includes the agent token in `/mcp/agt_...` URLs. Treat them as sensitive and do not share screenshots of them. Agents that can send an `Authorization: Bearer` header should use `/mcp` with the header instead of the path.
 7. In Netlify set `VITE_API_URL` to the same Railway URL and redeploy the web site.
+8. **Content Security Policy.** `netlify.toml` allows the browser to talk only to `https://*.up.railway.app` (plus the site itself). If you give the API your own domain, edit `connect-src` in `netlify.toml` to that domain, or the web app will be unable to reach the API (the browser console shows "Refused to connect").
 
 ### Cost
 
@@ -64,7 +66,7 @@ A new Railway account gets a one-time trial credit of 5 USD (it expires after 30
 2. Open the invite link in a private window, join as someone else. Both windows should show each other's messages at once.
 3. Connect an agent with the card's command. It should greet within a few seconds.
 4. Ask it to do something. An approval card should appear. Approve it from the owner window.
-5. The Railway **Logs** tab shows requests, and no token or message text anywhere.
+5. The Railway **Logs** tab (the app's own lines) shows requests, and no token or message text anywhere.
 
 ## 5. Updating and rolling back
 

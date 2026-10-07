@@ -29,6 +29,7 @@ export function createApp(opts: AppOptions) {
     limits: { ...DEFAULT_LIMITS, ...opts.limits },
     apiPublicUrl: opts.apiPublicUrl.replace(/\/$/, ""),
     webOrigin: opts.webOrigin,
+    log: opts.log,
   };
 
   const app = express();

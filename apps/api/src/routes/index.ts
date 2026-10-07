@@ -7,6 +7,7 @@ import {
 import { Router, type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import { z } from "zod";
 import { assertUuid } from "../lib/validate";
+import { ipKey } from "../lib/ip";
 import { getAuth, requireOwner } from "../lib/auth";
 import type { Deps } from "../lib/deps";
 import { errors } from "../lib/errors";
@@ -36,7 +37,7 @@ function parse<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T> {
   return r.data;
 }
 
-const ip = (req: Request) => req.ip ?? "unknown";
+const ip = (req: Request) => ipKey(req.ip);
 
 const querySchema = z.object({
   after_id: z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),

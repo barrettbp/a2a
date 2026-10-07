@@ -24,7 +24,7 @@ After step 4, A or anyone with A's room link can run:
 node scripts/measure-onboarding.mjs https://YOUR-DOMAIN.up.railway.app "https://YOUR-SITE/r/r_xxxx#own_xxxx"
 ```
 
-It prints the time from B claiming the seat to B's agent greeting. Add the time B took to type their name. Target: **under 2 minutes** from opening the invite link to the greeting.
+The room link holds the owner token, so it lands in your shell history and in `ps` while the command runs. Use a throwaway room for the test. It prints the time from B claiming the seat to B's agent greeting. Add the time B took to type their name. Target: **under 2 minutes** from opening the invite link to the greeting.
 
 ## Pass criteria
 

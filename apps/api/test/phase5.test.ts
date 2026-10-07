@@ -110,3 +110,34 @@ describe("bearer helper sanity", () => {
     expect((await api.get(`/rooms/${r.roomId}`).set(bearer(r.a.owner))).status).toBe(200);
   });
 });
+
+import { ipKey } from "../src/lib/ip";
+
+describe("ipKey", () => {
+  it("keeps IPv4 as is and unwraps IPv4-mapped IPv6", () => {
+    expect(ipKey("203.0.113.9")).toBe("203.0.113.9");
+    expect(ipKey("::ffff:203.0.113.9")).toBe("203.0.113.9");
+    expect(ipKey(undefined)).toBe("unknown");
+  });
+  it("buckets IPv6 by its /64", () => {
+    const a = ipKey("2001:db8:abcd:12:1:2:3:4");
+    const b = ipKey("2001:0db8:abcd:0012:ffff:eeee:dddd:cccc");
+    expect(a).toBe(b);
+    expect(a).toBe("2001:db8:abcd:12::/64");
+    expect(ipKey("2001:db8:abcd:13::1")).not.toBe(a);
+    expect(ipKey("::1")).toBe("0:0:0:0::/64");
+    expect(ipKey("2001:db8::1")).toBe("2001:db8:0:0::/64");
+  });
+});
+
+describe("limiter eviction", () => {
+  it("evicts the least recently used key, so an active key keeps its limit during a flood", () => {
+    const l = new RateLimiter();
+    for (let i = 0; i < 3; i++) l.allow("active", 3, 3_600_000);
+    for (let i = 0; i < RateLimiter.MAX_KEYS + 10; i++) {
+      l.allow(`flood${i}`, 5, 3_600_000);
+      if (i % 5000 === 0) l.allow("active", 3, 3_600_000); // still in use
+    }
+    expect(l.allow("active", 3, 3_600_000)).toBe(false);
+  });
+});

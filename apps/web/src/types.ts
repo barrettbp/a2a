@@ -56,5 +56,7 @@ export interface CreateResult {
   owner_token: string;
   agent_token: string;
   invite_url: string | null;
+  /** the agent's MCP URL as built by the server. The web uses this, never a URL found inside the prompt text. */
+  mcp_url: string;
   connect_prompt: string;
 }

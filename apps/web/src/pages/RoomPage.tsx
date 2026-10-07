@@ -35,6 +35,11 @@ function resolveForRoom(roomId: string): ResolvedToken {
     get: (k) => getItem("local", k),
     set: (k, v) => setItem("local", k, v),
   });
+  if (r.needsVerify) {
+    // Decided later, once the server has said whether the fragment token is valid (see RoomPage).
+    resolved.set(roomId, r);
+    return r;
+  }
   if (r.fromFragment && r.persisted) {
     // Keep history.state so the router's own state survives.
     window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
@@ -46,15 +51,46 @@ function resolveForRoom(roomId: string): ResolvedToken {
   return r;
 }
 
+function stripFragment() {
+  window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+}
+
 export function RoomPage() {
   const { roomId = "" } = useParams();
   const location = useLocation();
   const r = useMemo(() => resolveForRoom(roomId), [roomId]);
   const panel = (location.state as { panel?: string } | null)?.panel;
-  if (!r.token) return <ErrorPage kind="no-key" />;
+  // When a link carries a different token than the one stored, ask the server first. Keep the stored token
+  // if the link's token is refused, so a bad link cannot lock you out.
+  const [token, setToken] = useState<string | null | "checking">(r.needsVerify ? "checking" : r.token);
+  useEffect(() => {
+    if (!r.needsVerify || !r.token) return;
+    const ctrl = new AbortController();
+    api
+      .getRoom(roomId, r.token, ctrl.signal)
+      .then(() => {
+        setItem("local", keys.token(roomId), r.token!);
+        if (getItem("local", keys.banner(roomId)) === null) setItem("local", keys.banner(roomId), BANNER_SHOW);
+        stripFragment();
+        setToken(r.token);
+      })
+      .catch((e) => {
+        if (ctrl.signal.aborted) return;
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 404)) {
+          stripFragment();
+          setToken(r.fallback ?? null);
+        } else {
+          // Could not reach the server: do not decide anything, show the stored token's room.
+          setToken(r.fallback ?? null);
+        }
+      });
+    return () => ctrl.abort();
+  }, [r, roomId]);
+  if (token === "checking") return <div className="p-6 text-small text-ink-2" role="status">Opening your room...</div>;
+  if (!token) return <ErrorPage kind="no-key" />;
   return (
     <ToastProvider bottom="calc(var(--composer-h, 96px) + 16px)">
-      <RoomView key={roomId} roomId={roomId} token={r.token} openConnect={panel === "connect"} />
+      <RoomView key={roomId} roomId={roomId} token={token} openConnect={panel === "connect"} />
     </ToastProvider>
   );
 }
@@ -80,6 +116,7 @@ function RoomView({ roomId, token, openConnect }: { roomId: string; token: strin
   const [connectSignal, setConnectSignal] = useState(openConnect ? 1 : 0);
   const [inviteSignal, setInviteSignal] = useState(0);
   const [prompt, setPrompt] = useState(() => getItem("session", keys.prompt(roomId)));
+  const [mcpUrl, setMcpUrl] = useState(() => getItem("session", keys.mcpUrl(roomId)));
   const [inviteUrl, setInviteUrl] = useState(() => getItem("local", keys.invite(roomId)));
   const [banner, setBanner] = useState(() => getItem("local", keys.banner(roomId)) === BANNER_SHOW);
   const [sendSignal, setSendSignal] = useState(0);
@@ -445,7 +482,11 @@ function RoomView({ roomId, token, openConnect }: { roomId: string; token: strin
         now={clock}
         inviteUrl={inviteUrl}
         prompt={prompt}
-        onPrompt={setPrompt}
+        mcpUrl={mcpUrl}
+        onPrompt={(p, u) => {
+          setPrompt(p);
+          setMcpUrl(u);
+        }}
         connectSignal={connectSignal}
         inviteSignal={inviteSignal}
       />

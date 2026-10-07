@@ -72,6 +72,7 @@ export async function createRoom(d: Deps, input: CreateRoomInput) {
     room_id: roomId,
     owner_token: ownerToken,
     agent_token: agentToken,
+    mcp_url: `${d.apiPublicUrl}/mcp/${agentToken}`,
     invite_url: `${d.webOrigin}/i/${inviteToken}`,
     connect_prompt: connectPrompt({
       roomName: input.name,
@@ -142,6 +143,7 @@ export async function claimInvite(d: Deps, token: string, input: ClaimInviteInpu
     room_id: roomId,
     owner_token: ownerToken,
     agent_token: agentToken,
+    mcp_url: `${d.apiPublicUrl}/mcp/${agentToken}`,
     invite_url: null,
     connect_prompt: connectPrompt({
       roomName: found.room.name,
@@ -196,6 +198,7 @@ export async function rotateAgentToken(d: Deps, caller: Seat, agentSeatId: strin
   d.bus.emit(caller.roomId, { type: "seat", data: { reason: "rotated", seat_id: agent.id } });
   return {
     agent_token: agentToken,
+    mcp_url: `${d.apiPublicUrl}/mcp/${agentToken}`,
     connect_prompt: connectPrompt({
       roomName: room!.name,
       ownerName: caller.displayName ?? "you",

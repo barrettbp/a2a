@@ -42,6 +42,7 @@ export const keys = {
   invite: (roomId: string) => `snapwork:invite:${roomId}`,
   banner: (roomId: string) => `snapwork:banner-dismissed:${roomId}`,
   prompt: (roomId: string) => `snapwork:prompt:${roomId}`,
+  mcpUrl: (roomId: string) => `snapwork:mcp-url:${roomId}`,
   tab: "snapwork:connect-tab",
 };
 

@@ -22,7 +22,9 @@ export interface PanelProps {
   inviteUrl: string | null;
   /** connect prompt held in this tab, null when it can't be shown */
   prompt: string | null;
-  onPrompt: (p: string) => void;
+  /** URL built by the server for this prompt */
+  mcpUrl: string | null;
+  onPrompt: (p: string, mcpUrl: string) => void;
   /** bump to expand the connect card and focus its heading */
   connectSignal: number;
   inviteSignal: number;
@@ -177,7 +179,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "other", label: "Other MCP" },
 ];
 
-function ConnectCard({ roomId, token, agent, now, prompt, onPrompt, connectSignal }: PanelProps & { agent: Seat }) {
+function ConnectCard({ roomId, token, agent, now, prompt, mcpUrl, onPrompt, connectSignal }: PanelProps & { agent: Seat }) {
   const { toast } = useToast();
   const online = isOnline(agent.last_seen_at, now);
   const [open, setOpen] = useState(!online);
@@ -192,7 +194,7 @@ function ConnectCard({ roomId, token, agent, now, prompt, onPrompt, connectSigna
   const urlRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLPreElement>(null);
   const bodyId = useId();
-  const parsed = useMemo(() => (prompt ? parseConnectPrompt(prompt) : null), [prompt]);
+  const parsed = useMemo(() => (prompt ? parseConnectPrompt(prompt, mcpUrl) : null), [prompt, mcpUrl]);
 
   // A new signal (after create, claim or regenerate) expands the card.
   useEffect(() => {
@@ -205,7 +207,8 @@ function ConnectCard({ roomId, token, agent, now, prompt, onPrompt, connectSigna
     try {
       const r = await api.rotateToken(token, agent.id);
       setItem("session", keys.prompt(roomId), r.connect_prompt);
-      onPrompt(r.connect_prompt);
+      setItem("session", keys.mcpUrl(roomId), r.mcp_url);
+      onPrompt(r.connect_prompt, r.mcp_url);
       setConfirm(false);
       toast("New connect prompt ready. The old one no longer works.");
       setOpen(true);
